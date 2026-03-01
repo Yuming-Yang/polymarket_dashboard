@@ -86,7 +86,7 @@ export function BreakingPageClient() {
       <PageHeader
         eyebrow="Module 2"
         title="Breaking"
-        subtitle="Find markets with the largest absolute price movement over your selected window, using the notebook section 5 movers pattern."
+        subtitle="Find markets with the largest absolute price movement over selected window"
       />
 
       <BreakingControls state={state} onChange={updateSearchParams} />

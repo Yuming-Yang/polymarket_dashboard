@@ -90,8 +90,8 @@ export function TopVolumePageClient() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Module 1"
-        title="Top Volume Explorer"
-        subtitle="Track the highest-volume Polymarket markets and events with notebook-parity ranking logic and live, filterable views."
+        title="Trending"
+        subtitle="Track the highest-volume Polymarket markets and events"
       />
 
       <TopVolumeControls
