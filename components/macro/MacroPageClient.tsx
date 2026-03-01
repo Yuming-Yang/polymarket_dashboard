@@ -7,7 +7,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ErrorState } from "@/components/ErrorState";
 import { MacroGroupsTable } from "@/components/macro/MacroGroupsTable";
-import { MacroKpiStrip } from "@/components/macro/MacroKpiStrip";
 import { MacroSummaryPanel } from "@/components/macro/MacroSummaryPanel";
 import { PageHeader } from "@/components/PageHeader";
 import { TopVolumeTableSkeleton } from "@/components/Skeletons";
@@ -114,8 +113,6 @@ export function MacroPageClient() {
           transition={{ duration: 0.25, ease: "easeOut" }}
           className="space-y-6"
         >
-          <MacroKpiStrip stats={query.data.stats} />
-          <MacroGroupsTable items={query.data.items} groups={query.data.groups} />
           <MacroSummaryPanel
             hasSnapshot={Boolean(query.data)}
             isGenerating={summaryMutation.isPending}
@@ -123,6 +120,7 @@ export function MacroPageClient() {
             summary={summaryMutation.data ?? null}
             onGenerate={onGenerateSummary}
           />
+          <MacroGroupsTable items={query.data.items} groups={query.data.groups} />
         </motion.div>
       ) : null}
     </div>
