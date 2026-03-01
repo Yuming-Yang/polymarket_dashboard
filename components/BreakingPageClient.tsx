@@ -11,7 +11,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { PageHeader } from "@/components/PageHeader";
 import { TopVolumeCardsSkeleton, TopVolumeTableSkeleton } from "@/components/Skeletons";
 import { formatRelativeUpdatedAt } from "@/lib/format";
-import { parseTagCsv } from "@/lib/polymarket/filter";
+import { parseTagSelectionParam, serializeTagSelection } from "@/lib/polymarket/tag-options";
 import { useBreaking } from "@/lib/query/useBreaking";
 
 function parseSearchParams(searchParams: URLSearchParams): BreakingControlState {
@@ -22,8 +22,8 @@ function parseSearchParams(searchParams: URLSearchParams): BreakingControlState 
   return {
     window: windowParam === "1h" || windowParam === "7d" ? windowParam : "24h",
     limit: Number.isFinite(parsedLimit) ? Math.min(100, Math.max(1, Math.round(parsedLimit))) : 20,
-    includeTags: searchParams.get("includeTags") ?? "",
-    excludeTags: searchParams.get("excludeTags") ?? "",
+    includeTags: parseTagSelectionParam(searchParams.get("includeTags")),
+    excludeTags: parseTagSelectionParam(searchParams.get("excludeTags")),
   };
 }
 
@@ -38,8 +38,8 @@ export function BreakingPageClient() {
   const query = useBreaking({
     window: state.window,
     limit: state.limit,
-    includeTags: parseTagCsv(state.includeTags),
-    excludeTags: parseTagCsv(state.excludeTags),
+    includeTags: state.includeTags,
+    excludeTags: state.excludeTags,
   });
 
   useEffect(() => {
@@ -58,14 +58,14 @@ export function BreakingPageClient() {
       next.set("window", nextState.window);
       next.set("limit", String(nextState.limit));
 
-      if (nextState.includeTags.trim().length > 0) {
-        next.set("includeTags", nextState.includeTags);
+      if (nextState.includeTags.length > 0) {
+        next.set("includeTags", serializeTagSelection(nextState.includeTags));
       } else {
         next.delete("includeTags");
       }
 
-      if (nextState.excludeTags.trim().length > 0) {
-        next.set("excludeTags", nextState.excludeTags);
+      if (nextState.excludeTags.length > 0) {
+        next.set("excludeTags", serializeTagSelection(nextState.excludeTags));
       } else {
         next.delete("excludeTags");
       }

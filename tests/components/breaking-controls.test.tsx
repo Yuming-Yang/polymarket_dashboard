@@ -13,8 +13,8 @@ describe("BreakingControls", () => {
         state={{
           window: "24h",
           limit: 20,
-          includeTags: "",
-          excludeTags: "",
+          includeTags: [],
+          excludeTags: [],
         }}
         onChange={onChange}
       />,
@@ -23,9 +23,9 @@ describe("BreakingControls", () => {
     fireEvent.click(screen.getByText("7d"));
     expect(onChange).toHaveBeenCalledWith({ window: "7d" });
 
-    fireEvent.change(screen.getByPlaceholderText("politics, economy"), {
-      target: { value: "politics" },
-    });
-    expect(onChange).toHaveBeenCalledWith({ includeTags: "politics" });
+    const includeSelect = screen.getByLabelText("Include tags") as HTMLSelectElement;
+    includeSelect.options[0].selected = true; // Politics
+    fireEvent.change(includeSelect);
+    expect(onChange).toHaveBeenCalledWith({ includeTags: ["Politics"] });
   });
 });

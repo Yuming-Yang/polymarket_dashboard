@@ -100,12 +100,12 @@ function inferStatus(raw: { active?: unknown; resolved?: unknown; closed?: unkno
   return "unknown";
 }
 
-function toPolymarketUrl(slug: unknown): string | null {
+function toPolymarketUrl(kind: "market" | "event", slug: unknown): string | null {
   if (typeof slug !== "string" || slug.trim().length === 0) {
     return null;
   }
 
-  return `https://polymarket.com/event/${slug.trim()}`;
+  return `https://polymarket.com/${kind}/${slug.trim()}`;
 }
 
 function normalizeTimestamp(value: unknown): string | null {
@@ -151,7 +151,7 @@ export function normalizeMarket(rawMarket: GammaMarketRaw, index: number): TopVo
     volumeTotalUsd: volumeTotal,
     displayVolumeUsd: null,
     price: normalizeMarketPrice(rawMarket),
-    url: toPolymarketUrl(rawMarket.slug),
+    url: toPolymarketUrl("market", rawMarket.slug),
     tags: toTags(rawMarket.tags),
     updatedAt: normalizeTimestamp(rawMarket.updatedAt),
   };
@@ -167,7 +167,7 @@ export function normalizeEvent(rawEvent: GammaEventRaw, index: number): TopVolum
     volumeTotalUsd: toNumber(rawEvent.volume),
     displayVolumeUsd: null,
     price: null,
-    url: toPolymarketUrl(rawEvent.slug),
+    url: toPolymarketUrl("event", rawEvent.slug),
     tags: toTags(rawEvent.tags),
     updatedAt: normalizeTimestamp(rawEvent.updatedAt),
   };

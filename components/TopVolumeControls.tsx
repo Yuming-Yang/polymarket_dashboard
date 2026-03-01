@@ -1,9 +1,11 @@
 "use client";
 
 import { RefreshCw } from "lucide-react";
+import type { ChangeEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TAG_OPTIONS } from "@/lib/polymarket/tag-options";
 import { cn } from "@/lib/utils";
 
 type Entity = "markets" | "events";
@@ -13,8 +15,8 @@ export type TopVolumeControlState = {
   entity: Entity;
   window: Window;
   limit: number;
-  includeTags: string;
-  excludeTags: string;
+  includeTags: string[];
+  excludeTags: string[];
 };
 
 type TopVolumeControlsProps = {
@@ -63,6 +65,14 @@ function SegmentedControl<T extends string>({
 }
 
 export function TopVolumeControls({ state, onChange, onRefresh, isRefreshing }: TopVolumeControlsProps) {
+  const onSelectTags = (
+    event: ChangeEvent<HTMLSelectElement>,
+    key: "includeTags" | "excludeTags",
+  ) => {
+    const selected = Array.from(event.currentTarget.selectedOptions).map((option) => option.value);
+    onChange({ [key]: selected });
+  };
+
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="grid gap-4 lg:grid-cols-[auto_auto_96px_1fr_1fr_auto] lg:items-end">
@@ -89,20 +99,34 @@ export function TopVolumeControls({ state, onChange, onRefresh, isRefreshing }: 
 
         <label className="block">
           <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">Include tags</span>
-          <Input
+          <select
+            multiple
             value={state.includeTags}
-            placeholder="politics, crypto prices"
-            onChange={(event) => onChange({ includeTags: event.target.value })}
-          />
+            onChange={(event) => onSelectTags(event, "includeTags")}
+            className="h-24 w-full rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {TAG_OPTIONS.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </select>
         </label>
 
         <label className="block">
           <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">Exclude tags</span>
-          <Input
+          <select
+            multiple
             value={state.excludeTags}
-            placeholder="sports"
-            onChange={(event) => onChange({ excludeTags: event.target.value })}
-          />
+            onChange={(event) => onSelectTags(event, "excludeTags")}
+            className="h-24 w-full rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {TAG_OPTIONS.map((tag) => (
+              <option key={tag} value={tag}>
+                {tag}
+              </option>
+            ))}
+          </select>
         </label>
 
         <Button variant="outline" className="h-10" onClick={onRefresh} aria-label="Refresh data">

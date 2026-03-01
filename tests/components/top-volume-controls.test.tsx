@@ -15,8 +15,8 @@ describe("TopVolumeControls", () => {
           entity: "markets",
           window: "24h",
           limit: 10,
-          includeTags: "",
-          excludeTags: "",
+          includeTags: [],
+          excludeTags: [],
         }}
         onChange={onChange}
         onRefresh={onRefresh}
@@ -27,10 +27,10 @@ describe("TopVolumeControls", () => {
     fireEvent.click(screen.getByText("Events"));
     expect(onChange).toHaveBeenCalledWith({ entity: "events" });
 
-    fireEvent.change(screen.getByPlaceholderText("politics, crypto prices"), {
-      target: { value: "politics" },
-    });
-    expect(onChange).toHaveBeenCalledWith({ includeTags: "politics" });
+    const includeSelect = screen.getByLabelText("Include tags") as HTMLSelectElement;
+    includeSelect.options[0].selected = true; // Politics
+    fireEvent.change(includeSelect);
+    expect(onChange).toHaveBeenCalledWith({ includeTags: ["Politics"] });
 
     fireEvent.click(screen.getByRole("button", { name: /refresh/i }));
     expect(onRefresh).toHaveBeenCalledTimes(1);
