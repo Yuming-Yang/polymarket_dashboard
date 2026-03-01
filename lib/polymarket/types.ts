@@ -82,6 +82,7 @@ export type GammaMarketRaw = {
   oneMonthPriceChange?: string | number | null;
   lastTradePrice?: string | number | null;
   outcomePrices?: string | Array<string | number> | null;
+  clobTokenIds?: string | Array<string | number> | null;
   tags?: GammaTagRaw[] | null;
   updatedAt?: string | null;
   [key: string]: unknown;

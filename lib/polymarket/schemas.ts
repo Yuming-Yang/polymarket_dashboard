@@ -28,6 +28,7 @@ export const gammaMarketSchema = z
     oneMonthPriceChange: numberLikeSchema,
     lastTradePrice: numberLikeSchema,
     outcomePrices: z.union([z.string(), z.array(z.union([z.string(), z.number()]))]).nullable().optional(),
+    clobTokenIds: z.union([z.string(), z.array(z.union([z.string(), z.number()]))]).nullable().optional(),
     tags: z.array(gammaTagSchema).nullable().optional(),
     updatedAt: z.string().nullable().optional(),
   })

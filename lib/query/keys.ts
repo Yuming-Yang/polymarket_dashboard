@@ -15,6 +15,10 @@ type BreakingKeyParams = {
   excludeTags: string[];
 };
 
+type MacroKeyParams = {
+  limit: number;
+};
+
 export const queryKeys = {
   topVolume: (params: TopVolumeKeyParams) =>
     [
@@ -33,4 +37,5 @@ export const queryKeys = {
       params.includeTags.join(","),
       params.excludeTags.join(","),
     ] as const,
+  macro: (params: MacroKeyParams) => ["macro", params.limit] as const,
 };
