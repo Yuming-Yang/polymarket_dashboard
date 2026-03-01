@@ -30,6 +30,8 @@ If `pnpm` is not available, use `npm install`.
 cp .env.example .env.local
 ```
 
+`.env.example` is a template only; Next.js reads runtime values from `.env.local`.
+
 3. Start app:
 
 ```bash
@@ -95,7 +97,7 @@ The route returns a normalized payload (`BreakingResponse`) with `BreakingItem[]
 
 Query params:
 
-- `limit=50` (max `50`)
+- `limit=50` (default `50`, max `300`)
 - `refresh=1` (optional cache bypass)
 
 The route returns a normalized payload (`MacroResponse`) with:
@@ -109,7 +111,7 @@ The route returns a normalized payload (`MacroResponse`) with:
 Body:
 
 - `snapshotAt`
-- `items` (max `50`, current displayed snapshot)
+- `items` (current displayed snapshot, max `300`)
 - `groups`
 - `stats`
 

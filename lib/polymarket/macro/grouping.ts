@@ -3,7 +3,19 @@ import { MACRO_BUCKETS, MacroBucket, MacroGroupSummary, MacroMonitorItem } from 
 const bucketRules: Array<{ bucket: Exclude<MacroBucket, "Other Economy/Finance">; keywords: string[] }> = [
   {
     bucket: "Rates & Fed",
-    keywords: ["fed", "fomc", "rate", "interest", "yield", "treasury", "powell"],
+    keywords: [
+      "fed",
+      "fomc",
+      "powell",
+      "interest rate",
+      "rates",
+      "rate hike",
+      "rate cut",
+      "fed funds",
+      "policy rate",
+      "yield",
+      "treasury",
+    ],
   },
   {
     bucket: "Inflation",
@@ -27,8 +39,43 @@ const bucketRules: Array<{ bucket: Exclude<MacroBucket, "Other Economy/Finance">
   },
 ];
 
+const fxContextKeywords = [
+  " usd ",
+  "dollar",
+  "dxy",
+  "eurusd",
+  "usd/jpy",
+  "gbpusd",
+  "forex",
+  "fx ",
+  "cny",
+  "yuan",
+];
+
+const ratesFedStrongSignals = [
+  "fed",
+  "fomc",
+  "powell",
+  "interest rate",
+  "rate hike",
+  "rate cut",
+  "fed funds",
+  "policy rate",
+  "treasury yield",
+];
+
 function toSearchText(title: string, tags: string[]) {
-  return `${title} ${tags.join(" ")}`.toLowerCase();
+  return ` ${title} ${tags.join(" ")} `.toLowerCase();
+}
+
+function shouldSkipRatesFedBucket(text: string) {
+  const hasFxContext = fxContextKeywords.some((keyword) => text.includes(keyword));
+  if (!hasFxContext) {
+    return false;
+  }
+
+  const hasStrongFedSignal = ratesFedStrongSignals.some((keyword) => text.includes(keyword));
+  return !hasStrongFedSignal;
 }
 
 export function assignMacroBucket(title: string, tags: string[]): MacroBucket {
@@ -37,6 +84,10 @@ export function assignMacroBucket(title: string, tags: string[]): MacroBucket {
   for (const rule of bucketRules) {
     const hasMatch = rule.keywords.some((keyword) => text.includes(keyword));
     if (hasMatch) {
+      if (rule.bucket === "Rates & Fed" && shouldSkipRatesFedBucket(text)) {
+        continue;
+      }
+
       return rule.bucket;
     }
   }

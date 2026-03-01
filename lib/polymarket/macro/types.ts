@@ -1,3 +1,6 @@
+export const MACRO_DEFAULT_LIMIT = 50;
+export const MACRO_MAX_LIMIT = 300;
+
 export const MACRO_BUCKETS = [
   "Rates & Fed",
   "Inflation",

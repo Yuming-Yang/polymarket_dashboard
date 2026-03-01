@@ -64,7 +64,7 @@ describe("selectMacroTopMarkets", () => {
     expect(items[0].volume24hUsd).toBe(450);
   });
 
-  it("applies limit with max cap", () => {
+  it("allows limits above 50 and caps only at module max", () => {
     const items = selectMacroTopMarkets(
       Array.from({ length: 60 }).map((_, index) => ({
         id: String(index),
@@ -76,8 +76,8 @@ describe("selectMacroTopMarkets", () => {
       80,
     );
 
-    expect(items).toHaveLength(50);
+    expect(items).toHaveLength(60);
     expect(items[0].id).toBe("0");
-    expect(items[49].id).toBe("49");
+    expect(items[59].id).toBe("59");
   });
 });

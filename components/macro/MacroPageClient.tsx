@@ -14,17 +14,18 @@ import { TopVolumeTableSkeleton } from "@/components/Skeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatRelativeUpdatedAt } from "@/lib/format";
+import { MACRO_DEFAULT_LIMIT, MACRO_MAX_LIMIT } from "@/lib/polymarket/macro/types";
 import { useMacro } from "@/lib/query/useMacro";
 import { useMacroSummary } from "@/lib/query/useMacroSummary";
 
 function parseLimit(searchParams: URLSearchParams): number {
-  const limit = Number(searchParams.get("limit") ?? "50");
+  const limit = Number(searchParams.get("limit") ?? String(MACRO_DEFAULT_LIMIT));
 
   if (!Number.isFinite(limit)) {
-    return 50;
+    return MACRO_DEFAULT_LIMIT;
   }
 
-  return Math.min(50, Math.max(1, Math.round(limit)));
+  return Math.min(MACRO_MAX_LIMIT, Math.max(1, Math.round(limit)));
 }
 
 export function MacroPageClient() {
@@ -45,7 +46,7 @@ export function MacroPageClient() {
   const updateLimit = useCallback(
     (nextLimit: number) => {
       const next = new URLSearchParams(searchParams.toString());
-      next.set("limit", String(Math.min(50, Math.max(1, Math.round(nextLimit)))));
+      next.set("limit", String(Math.min(MACRO_MAX_LIMIT, Math.max(1, Math.round(nextLimit)))));
       router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     },
     [pathname, router, searchParams],
@@ -85,9 +86,9 @@ export function MacroPageClient() {
             <Input
               value={limit}
               min={1}
-              max={50}
+              max={MACRO_MAX_LIMIT}
               type="number"
-              onChange={(event) => updateLimit(Number(event.target.value) || 50)}
+              onChange={(event) => updateLimit(Number(event.target.value) || MACRO_DEFAULT_LIMIT)}
             />
           </label>
 

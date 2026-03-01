@@ -27,6 +27,10 @@ describe("assignMacroBucket", () => {
     expect(assignMacroBucket("Labor market update", ["Finance"])).toBe("Growth & Labor");
     expect(assignMacroBucket("Generic macro question", ["Economy"])).toBe("Other Economy/Finance");
   });
+
+  it("does not place USD/FX markets into Rates & Fed by generic rate terms", () => {
+    expect(assignMacroBucket("USD exchange rate against CNY this month", ["Finance"])).toBe("Other Economy/Finance");
+  });
 });
 
 describe("summarizeMacroGroups and computeMacroStats", () => {

@@ -29,7 +29,7 @@ export function MacroKpiStrip({ stats }: { stats: MacroStats }) {
 
   const items = [
     {
-      label: "Top 50 Volume",
+      label: "Selected Volume",
       value: formatUsd(stats.totalVolume24hUsd),
     },
     {
