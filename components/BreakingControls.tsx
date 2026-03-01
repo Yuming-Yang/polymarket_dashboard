@@ -1,7 +1,6 @@
 "use client";
 
-import type { ChangeEvent } from "react";
-
+import { MultiSelectDropdown } from "@/components/ui/multi-select-dropdown";
 import { Input } from "@/components/ui/input";
 import { TAG_OPTIONS } from "@/lib/polymarket/tag-options";
 import { cn } from "@/lib/utils";
@@ -25,14 +24,6 @@ const windowOptions: Array<{ label: string; value: BreakingControlState["window"
 ];
 
 export function BreakingControls({ state, onChange }: BreakingControlsProps) {
-  const onSelectTags = (
-    event: ChangeEvent<HTMLSelectElement>,
-    key: "includeTags" | "excludeTags",
-  ) => {
-    const selected = Array.from(event.currentTarget.selectedOptions).map((option) => option.value);
-    onChange({ [key]: selected });
-  };
-
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="grid gap-4 lg:grid-cols-[auto_96px_1fr_1fr] lg:items-end">
@@ -68,34 +59,22 @@ export function BreakingControls({ state, onChange }: BreakingControlsProps) {
 
         <label className="block">
           <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">Include tags</span>
-          <select
-            multiple
-            value={state.includeTags}
-            onChange={(event) => onSelectTags(event, "includeTags")}
-            className="h-24 w-full rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {TAG_OPTIONS.map((tag) => (
-              <option key={tag} value={tag}>
-                {tag}
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Include tags"
+            options={TAG_OPTIONS}
+            selected={state.includeTags}
+            onChange={(includeTags) => onChange({ includeTags })}
+          />
         </label>
 
         <label className="block">
           <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-slate-500">Exclude tags</span>
-          <select
-            multiple
-            value={state.excludeTags}
-            onChange={(event) => onSelectTags(event, "excludeTags")}
-            className="h-24 w-full rounded-md border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {TAG_OPTIONS.map((tag) => (
-              <option key={tag} value={tag}>
-                {tag}
-              </option>
-            ))}
-          </select>
+          <MultiSelectDropdown
+            label="Exclude tags"
+            options={TAG_OPTIONS}
+            selected={state.excludeTags}
+            onChange={(excludeTags) => onChange({ excludeTags })}
+          />
         </label>
       </div>
     </div>

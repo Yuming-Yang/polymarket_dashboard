@@ -27,9 +27,8 @@ describe("TopVolumeControls", () => {
     fireEvent.click(screen.getByText("Events"));
     expect(onChange).toHaveBeenCalledWith({ entity: "events" });
 
-    const includeSelect = screen.getByLabelText("Include tags") as HTMLSelectElement;
-    includeSelect.options[0].selected = true; // Politics
-    fireEvent.change(includeSelect);
+    fireEvent.click(screen.getByRole("button", { name: "Include tags selector" }));
+    fireEvent.click(screen.getByRole("button", { name: "Politics" }));
     expect(onChange).toHaveBeenCalledWith({ includeTags: ["Politics"] });
 
     fireEvent.click(screen.getByRole("button", { name: /refresh/i }));
