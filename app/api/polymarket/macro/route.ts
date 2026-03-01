@@ -7,7 +7,7 @@ import { assignMacroBucket, summarizeMacroGroups } from "@/lib/polymarket/macro/
 import { macroResponseSchema } from "@/lib/polymarket/macro/schemas";
 import { selectMacroTopMarkets } from "@/lib/polymarket/macro/select";
 import { computeMacroStats } from "@/lib/polymarket/macro/stats";
-import { MacroResponse } from "@/lib/polymarket/macro/types";
+import { MACRO_SOURCE_FETCH_LIMIT, MacroResponse } from "@/lib/polymarket/macro/types";
 import { fetchMarketsForBreaking, UpstreamHttpError } from "@/lib/polymarket/client";
 import { gammaMarketsSchema } from "@/lib/polymarket/schemas";
 
@@ -18,16 +18,16 @@ export async function GET(request: NextRequest) {
     return errorResponse("Invalid query parameters", 400);
   }
 
-  const { limit, refresh } = parsedQuery.data;
+  const { refresh } = parsedQuery.data;
 
   try {
     const rawMarkets = await fetchMarketsForBreaking({
-      limit: 1_000,
+      limit: MACRO_SOURCE_FETCH_LIMIT,
       noStore: refresh === "1",
     });
 
     const markets = gammaMarketsSchema.parse(rawMarkets);
-    const selected = selectMacroTopMarkets(markets, limit);
+    const selected = selectMacroTopMarkets(markets);
     const enriched = await enrichCandidatesWithClobChanges(selected, {
       noStore: refresh === "1",
       concurrency: 10,
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     const response: MacroResponse = {
       params: {
-        limit,
+        sourceMarketFetchLimit: MACRO_SOURCE_FETCH_LIMIT,
         includeTagsFixed: ["economy", "finance"],
       },
       fetchedAt: new Date().toISOString(),

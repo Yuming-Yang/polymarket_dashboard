@@ -1,5 +1,5 @@
-export const MACRO_DEFAULT_LIMIT = 50;
-export const MACRO_MAX_LIMIT = 300;
+export const MACRO_SOURCE_FETCH_LIMIT = 1_000;
+export const MACRO_SUMMARY_MAX_ITEMS = 1_000;
 
 export const MACRO_BUCKETS = [
   "Rates & Fed",
@@ -52,7 +52,7 @@ export type MacroStats = {
 
 export type MacroResponse = {
   params: {
-    limit: number;
+    sourceMarketFetchLimit: number;
     includeTagsFixed: ["economy", "finance"];
   };
   fetchedAt: string;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { MACRO_BUCKETS, MACRO_MAX_LIMIT } from "@/lib/polymarket/macro/types";
+import { MACRO_BUCKETS, MACRO_SOURCE_FETCH_LIMIT, MACRO_SUMMARY_MAX_ITEMS } from "@/lib/polymarket/macro/types";
 
 export const macroBucketSchema = z.enum(MACRO_BUCKETS);
 
@@ -43,7 +43,7 @@ export const macroStatsSchema = z.object({
 
 export const macroResponseSchema = z.object({
   params: z.object({
-    limit: z.number().int().positive().max(MACRO_MAX_LIMIT),
+    sourceMarketFetchLimit: z.number().int().positive().max(MACRO_SOURCE_FETCH_LIMIT),
     includeTagsFixed: z.tuple([z.literal("economy"), z.literal("finance")]),
   }),
   fetchedAt: z.string(),
@@ -75,7 +75,7 @@ export const macroSummarySchema = z.object({
 
 export const macroSummaryRequestSchema = z.object({
   snapshotAt: z.string(),
-  items: z.array(macroMonitorItemSchema).max(MACRO_MAX_LIMIT),
+  items: z.array(macroMonitorItemSchema).max(MACRO_SUMMARY_MAX_ITEMS),
   groups: z.array(macroGroupSummarySchema).max(MACRO_BUCKETS.length),
   stats: macroStatsSchema,
 });

@@ -97,12 +97,11 @@ The route returns a normalized payload (`BreakingResponse`) with `BreakingItem[]
 
 Query params:
 
-- `limit=50` (default `50`, max `300`)
 - `refresh=1` (optional cache bypass)
 
 The route returns a normalized payload (`MacroResponse`) with:
 
-- `items`: top Economy/Finance markets by `24h` volume
+- `items`: Economy/Finance markets filtered from top `24h`-volume active market universe
 - `groups`: deterministic macro bucket summaries
 - `stats`: KPI metrics, including CLOB coverage rates
 
@@ -111,7 +110,7 @@ The route returns a normalized payload (`MacroResponse`) with:
 Body:
 
 - `snapshotAt`
-- `items` (current displayed snapshot, max `300`)
+- `items` (current displayed snapshot, max `1000`)
 - `groups`
 - `stats`
 

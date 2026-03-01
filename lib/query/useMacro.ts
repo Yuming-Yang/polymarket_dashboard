@@ -4,16 +4,8 @@ import { macroResponseSchema } from "@/lib/polymarket/macro/schemas";
 import { MacroResponse } from "@/lib/polymarket/macro/types";
 import { queryKeys } from "@/lib/query/keys";
 
-type UseMacroParams = {
-  limit: number;
-};
-
-async function fetchMacro(params: UseMacroParams): Promise<MacroResponse> {
-  const searchParams = new URLSearchParams({
-    limit: String(params.limit),
-  });
-
-  const response = await fetch(`/api/polymarket/macro?${searchParams.toString()}`, {
+async function fetchMacro(): Promise<MacroResponse> {
+  const response = await fetch("/api/polymarket/macro", {
     method: "GET",
   });
 
@@ -27,10 +19,10 @@ async function fetchMacro(params: UseMacroParams): Promise<MacroResponse> {
   return macroResponseSchema.parse(json);
 }
 
-export function useMacro(params: UseMacroParams) {
+export function useMacro() {
   return useQuery({
-    queryKey: queryKeys.macro(params),
-    queryFn: () => fetchMacro(params),
+    queryKey: queryKeys.macro(),
+    queryFn: fetchMacro,
     staleTime: 15_000,
     refetchInterval: 30_000,
     retry: 2,

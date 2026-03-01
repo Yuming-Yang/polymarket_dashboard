@@ -52,7 +52,7 @@ describe("GET /api/polymarket/macro", () => {
       return new Response("{}", { status: 404 });
     });
 
-    const request = new NextRequest("http://localhost/api/polymarket/macro?limit=2");
+    const request = new NextRequest("http://localhost/api/polymarket/macro");
     const response = await GET(request);
     const json = await response.json();
 
@@ -63,13 +63,6 @@ describe("GET /api/polymarket/macro", () => {
     expect(json.params.includeTagsFixed).toEqual(["economy", "finance"]);
     expect(Array.isArray(json.groups)).toBe(true);
     expect(typeof json.stats.totalVolume24hUsd).toBe("number");
-  });
-
-  it("returns 400 on invalid limit", async () => {
-    const request = new NextRequest("http://localhost/api/polymarket/macro?limit=0");
-    const response = await GET(request);
-
-    expect(response.status).toBe(400);
   });
 
   it("returns 429 on upstream gamma rate-limit", async () => {

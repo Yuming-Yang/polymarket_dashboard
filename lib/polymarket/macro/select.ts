@@ -2,7 +2,6 @@ import { normalizeMarket } from "@/lib/polymarket/normalize";
 import { GammaMarketRaw } from "@/lib/polymarket/types";
 
 import { extractCurrentExpectation } from "@/lib/polymarket/macro/expectation";
-import { MACRO_MAX_LIMIT } from "@/lib/polymarket/macro/types";
 
 export const MACRO_FIXED_INCLUDE_TAGS = ["economy", "finance"] as const;
 
@@ -28,9 +27,7 @@ function hasFixedIncludeTags(tags: string[]): boolean {
   return MACRO_FIXED_INCLUDE_TAGS.some((tag) => normalized.has(tag));
 }
 
-export function selectMacroTopMarkets(rawMarkets: GammaMarketRaw[], limit: number): MacroCandidate[] {
-  const normalizedLimit = Math.min(MACRO_MAX_LIMIT, Math.max(1, Math.round(limit)));
-
+export function selectMacroTopMarkets(rawMarkets: GammaMarketRaw[]): MacroCandidate[] {
   const candidates: MacroCandidate[] = rawMarkets
     .map((rawMarket, index) => {
       const base = normalizeMarket(rawMarket, index);
@@ -51,5 +48,5 @@ export function selectMacroTopMarkets(rawMarkets: GammaMarketRaw[], limit: numbe
     .filter((market) => hasFixedIncludeTags(market.tags));
 
   candidates.sort((left, right) => right.volume24hUsd - left.volume24hUsd);
-  return candidates.slice(0, normalizedLimit);
+  return candidates;
 }

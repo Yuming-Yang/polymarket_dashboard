@@ -57,14 +57,13 @@ describe("selectMacroTopMarkets", () => {
           active: true,
         },
       ],
-      50,
     );
 
     expect(items.map((item) => item.id)).toEqual(["b", "a"]);
     expect(items[0].volume24hUsd).toBe(450);
   });
 
-  it("allows limits above 50 and caps only at module max", () => {
+  it("keeps ranking order from top-volume universe without local slicing", () => {
     const items = selectMacroTopMarkets(
       Array.from({ length: 60 }).map((_, index) => ({
         id: String(index),
@@ -73,7 +72,6 @@ describe("selectMacroTopMarkets", () => {
         tags: [{ label: "Economy" }],
         active: true,
       })),
-      80,
     );
 
     expect(items).toHaveLength(60);
