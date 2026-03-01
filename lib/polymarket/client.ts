@@ -28,6 +28,10 @@ function clampCandidateLimit(limit: number) {
   return Math.min(500, Math.max(100, limit));
 }
 
+function clampWideCandidateLimit(limit: number) {
+  return Math.min(1_000, Math.max(100, limit));
+}
+
 async function requestGamma(
   path: string,
   params: Record<string, string>,
@@ -114,6 +118,21 @@ export async function fetchEvents(params: FetchGammaParams) {
       ascending: "false",
       order,
       limit: String(clampCandidateLimit(params.limit)),
+    },
+    { noStore: params.noStore },
+  );
+}
+
+export async function fetchMarketsForBreaking(params: { limit: number; noStore?: boolean }) {
+  return requestGamma(
+    "/markets",
+    {
+      active: "true",
+      closed: "false",
+      include_tag: "true",
+      ascending: "false",
+      order: "volume24hr",
+      limit: String(clampWideCandidateLimit(params.limit)),
     },
     { noStore: params.noStore },
   );

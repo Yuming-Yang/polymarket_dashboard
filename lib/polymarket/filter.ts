@@ -1,5 +1,3 @@
-import { TopVolumeItem } from "@/lib/polymarket/types";
-
 function normalizeTag(value: string) {
   return value.trim().toLowerCase();
 }
@@ -24,7 +22,11 @@ function toNormalizedTagSet(tags: string[]) {
   return new Set(tags.map((tag) => normalizeTag(tag)).filter((tag) => tag.length > 0));
 }
 
-export function applyTagFilters(items: TopVolumeItem[], includeTags: string[], excludeTags: string[]): TopVolumeItem[] {
+type TaggableItem = {
+  tags: string[];
+};
+
+export function applyTagFilters<T extends TaggableItem>(items: T[], includeTags: string[], excludeTags: string[]): T[] {
   const includeSet = new Set(includeTags.map((tag) => normalizeTag(tag)).filter((tag) => tag.length > 0));
   const excludeSet = new Set(excludeTags.map((tag) => normalizeTag(tag)).filter((tag) => tag.length > 0));
 

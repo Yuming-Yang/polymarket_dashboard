@@ -18,6 +18,19 @@ export function formatPrice(value: number | null) {
   return value.toFixed(3);
 }
 
+export function formatSignedPercent(value: number | null) {
+  if (value === null || Number.isNaN(value)) {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    style: "percent",
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+    signDisplay: "always",
+  }).format(value);
+}
+
 export function formatRelativeUpdatedAt(value: string | null, now: number) {
   if (!value) {
     return "Updated just now";

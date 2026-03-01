@@ -11,12 +11,18 @@ export default function HomePage() {
         <p className="mt-4 text-base text-slate-600">
           Start with Module 1 to explore top markets and events by rolling or total volume.
         </p>
-        <div className="mt-8">
+        <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href="/top-volume"
             className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-900"
           >
             Open Top Volume Explorer
+          </Link>
+          <Link
+            href="/breaking"
+            className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-900"
+          >
+            Open Breaking Module
           </Link>
         </div>
       </div>

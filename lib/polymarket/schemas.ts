@@ -22,6 +22,10 @@ export const gammaMarketSchema = z
     volume24hr: numberLikeSchema,
     volume: numberLikeSchema,
     volumeNum: numberLikeSchema,
+    oneHourPriceChange: numberLikeSchema,
+    oneDayPriceChange: numberLikeSchema,
+    oneWeekPriceChange: numberLikeSchema,
+    oneMonthPriceChange: numberLikeSchema,
     lastTradePrice: numberLikeSchema,
     outcomePrices: z.union([z.string(), z.array(z.union([z.string(), z.number()]))]).nullable().optional(),
     tags: z.array(gammaTagSchema).nullable().optional(),
@@ -71,4 +75,29 @@ export const topVolumeResponseSchema = z.object({
   }),
   fetchedAt: z.string(),
   items: z.array(topVolumeItemSchema),
+});
+
+export const breakingItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  status: z.enum(["active", "resolved", "closed", "unknown"]),
+  window: z.enum(["1h", "24h", "7d"]),
+  priceChange: z.number().nullable(),
+  absPriceChange: z.number().nullable(),
+  lastPrice: z.number().nullable(),
+  volume24hUsd: z.number().nullable(),
+  tags: z.array(z.string()),
+  url: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+});
+
+export const breakingResponseSchema = z.object({
+  params: z.object({
+    window: z.enum(["1h", "24h", "7d"]),
+    limit: z.number().int().positive(),
+    includeTags: z.array(z.string()),
+    excludeTags: z.array(z.string()),
+  }),
+  fetchedAt: z.string(),
+  items: z.array(breakingItemSchema),
 });

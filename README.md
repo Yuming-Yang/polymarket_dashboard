@@ -1,6 +1,9 @@
 # Polymarket Dashboard
 
-Production-ready modular analytics dashboard built with Next.js App Router. Module 1 (`/top-volume`) is implemented end-to-end and mirrors the Jupyter notebook patterns for pulling and ranking Polymarket events/markets by volume.
+Production-ready modular analytics dashboard built with Next.js App Router.
+
+- Module 1: `/top-volume` (top events/markets by volume)
+- Module 2: `/breaking` (largest absolute price movers over selectable windows)
 
 ## Tech Stack
 
@@ -63,6 +66,20 @@ Query params:
 
 The route returns a normalized payload (`TopVolumeResponse`) with `TopVolumeItem[]`.
 
+## Module 2 API Contract
+
+`GET /api/polymarket/breaking`
+
+Query params:
+
+- `window=1h|24h|7d` (default `24h`)
+- `limit=20`
+- `includeTags=a,b`
+- `excludeTags=c,d`
+- `refresh=1` (optional cache bypass)
+
+The route returns a normalized payload (`BreakingResponse`) with `BreakingItem[]`.
+
 ## Notebook Parity Map
 
 Source notebook: `polymarket_top_events.ipynb`
@@ -78,6 +95,7 @@ Source notebook: `polymarket_top_events.ipynb`
   - intentional UX extension: case-insensitive + trimmed matching
 - volume extraction and display selection -> `lib/polymarket/volume.ts`
 - field normalization -> `lib/polymarket/normalize.ts`
+- section 5 movers (`oneDayPriceChange`, abs sort, broad market fetch) -> `app/api/polymarket/breaking/route.ts` + `lib/polymarket/breaking.ts`
 
 ## Vercel Deployment
 
@@ -95,7 +113,9 @@ app/
     layout.tsx
     providers.tsx
     top-volume/page.tsx
+    breaking/page.tsx
   api/polymarket/top-volume/route.ts
+  api/polymarket/breaking/route.ts
   layout.tsx
   page.tsx
 
@@ -105,6 +125,9 @@ components/
   TopVolumeControls.tsx
   TopVolumeTable.tsx
   TopVolumeCards.tsx
+  BreakingControls.tsx
+  BreakingTable.tsx
+  BreakingCards.tsx
   ErrorState.tsx
   Skeletons.tsx
   ui/*
@@ -112,6 +135,7 @@ components/
 lib/
   format.ts
   polymarket/
+    breaking.ts
     client.ts
     schemas.ts
     types.ts

@@ -1,6 +1,7 @@
 export type TopVolumeEntity = "markets" | "events";
 export type TopVolumeWindow = "24h" | "total";
 export type TopVolumeKind = "market" | "event";
+export type BreakingWindow = "1h" | "24h" | "7d";
 export type ItemStatus = "active" | "resolved" | "closed" | "unknown";
 
 export type TopVolumeParams = {
@@ -31,6 +32,33 @@ export type TopVolumeResponse = {
   items: TopVolumeItem[];
 };
 
+export type BreakingParams = {
+  window: BreakingWindow;
+  limit: number;
+  includeTags: string[];
+  excludeTags: string[];
+};
+
+export type BreakingItem = {
+  id: string;
+  title: string;
+  status: ItemStatus;
+  window: BreakingWindow;
+  priceChange: number | null;
+  absPriceChange: number | null;
+  lastPrice: number | null;
+  volume24hUsd: number | null;
+  tags: string[];
+  url: string | null;
+  updatedAt: string | null;
+};
+
+export type BreakingResponse = {
+  params: BreakingParams;
+  fetchedAt: string;
+  items: BreakingItem[];
+};
+
 export type GammaTagRaw = {
   id?: string | number | null;
   label?: string | null;
@@ -48,6 +76,10 @@ export type GammaMarketRaw = {
   volume24hr?: string | number | null;
   volume?: string | number | null;
   volumeNum?: string | number | null;
+  oneHourPriceChange?: string | number | null;
+  oneDayPriceChange?: string | number | null;
+  oneWeekPriceChange?: string | number | null;
+  oneMonthPriceChange?: string | number | null;
   lastTradePrice?: string | number | null;
   outcomePrices?: string | Array<string | number> | null;
   tags?: GammaTagRaw[] | null;
