@@ -33,5 +33,4 @@ export const queryKeys = {
       params.includeTags.join(","),
       params.excludeTags.join(","),
     ] as const,
-  macro: () => ["macro"] as const,
 };

@@ -4,7 +4,6 @@ Production-ready modular analytics dashboard built with Next.js App Router.
 
 - Module 1: `/top-volume` (top events/markets by volume)
 - Module 2: `/breaking` (largest absolute price movers over selectable windows)
-- Module 3: `/macro` (Economy/Finance monitor with CLOB-based 1d/1w changes + AI summary)
 
 ## Tech Stack
 
@@ -56,12 +55,6 @@ pnpm dev
 
 `POLYMARKET_CLOB_BASE_URL=https://clob.polymarket.com`
 
-`OPENAI_API_KEY=...`
-
-`OPENAI_MODEL=...`
-
-`OPENAI_MACRO_SUMMARY_PROMPT=...`
-
 ## Module 1 API Contract
 
 `GET /api/polymarket/top-volume`
@@ -90,36 +83,6 @@ Query params:
 - `refresh=1` (optional cache bypass)
 
 The route returns a normalized payload (`BreakingResponse`) with `BreakingItem[]`.
-
-## Module 3 API Contract
-
-`GET /api/polymarket/macro`
-
-Query params:
-
-- `refresh=1` (optional cache bypass)
-
-The route returns a normalized payload (`MacroResponse`) with:
-
-- `items`: Economy/Finance markets filtered from top `24h`-volume active market universe
-- `groups`: deterministic macro bucket summaries
-- `stats`: KPI metrics, including CLOB coverage rates
-
-`POST /api/polymarket/macro/summary`
-
-Body:
-
-- `snapshotAt`
-- `items` (current displayed snapshot, max `1000`)
-- `groups`
-- `stats`
-
-The route returns `MacroSummaryResponse` with:
-
-- `takeaway`
-- `topRecentChanges`
-- `groupHighlights`
-- `watchItems`
 
 ## Notebook Parity Map
 
@@ -155,11 +118,8 @@ app/
     providers.tsx
     top-volume/page.tsx
     breaking/page.tsx
-    macro/page.tsx
   api/polymarket/top-volume/route.ts
   api/polymarket/breaking/route.ts
-  api/polymarket/macro/route.ts
-  api/polymarket/macro/summary/route.ts
   layout.tsx
   page.tsx
 
@@ -172,7 +132,6 @@ components/
   BreakingControls.tsx
   BreakingTable.tsx
   BreakingCards.tsx
-  macro/*
   ErrorState.tsx
   Skeletons.tsx
   ui/*
@@ -186,13 +145,10 @@ lib/
     types.ts
     normalize.ts
     filter.ts
-    macro/*
     volume.ts
   query/
     keys.ts
     useTopVolume.ts
-    useMacro.ts
-    useMacroSummary.ts
 
 tests/
   api/

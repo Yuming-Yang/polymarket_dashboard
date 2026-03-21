@@ -19,12 +19,6 @@ export default function HomePage() {
           >
             Breaking
           </Link>
-          <Link
-            href="/macro"
-            className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-900"
-          >
-            Macro
-          </Link>
         </div>
       </div>
     </main>
