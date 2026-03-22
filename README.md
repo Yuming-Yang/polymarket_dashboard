@@ -6,6 +6,7 @@ Production-ready modular analytics dashboard built with Next.js App Router.
 - Module 2: `/breaking` (largest absolute price movers over selectable windows)
 - Module 3: `/insider` (suspicious trade detection with cron + Supabase)
 - Module 4: `/search` (search-driven topic watchlist with AI narrative summary)
+- Module 5: `/price-hit` (implied price distributions from strike-based Polymarket markets)
 
 ## Tech Stack
 
@@ -68,6 +69,8 @@ pnpm dev
 `OPENAI_API_KEY=...`
 
 `OPENAI_WATCHLIST_MODEL=gpt-5.4-mini` (optional)
+
+`OPENAI_PRICE_HIT_MODEL=gpt-5.4-mini` (optional)
 
 ## Module 1 API Contract
 
@@ -137,6 +140,25 @@ The route returns a normalized payload with:
 - `summaryStatus=ready|unavailable`
 - `events[]` containing grouped event results, each with event metadata plus nested market pricing and Polymarket links
 
+## Module 5 API Contract
+
+`GET /api/polymarket/price-hit`
+
+Query params:
+
+- `asset=bitcoin|gold|oil|nvda|silver`
+
+The route returns a normalized payload with:
+
+- asset metadata
+- AI cache metadata (`aiCacheStatus`, `aiRefreshedAt`, `aiExpiresAt`)
+- `expiries[]` containing per-expiry summary metrics, chart buckets, and the underlying markets used
+
+`POST /api/polymarket/price-hit/refresh`
+
+- force-refreshes the cached AI classification for all hardcoded assets
+- returns per-asset refresh status rows so the UI can report full refresh, stale fallback, or failure
+
 ## Notebook Parity Map
 
 Source notebook: `polymarket_top_events.ipynb`
@@ -174,12 +196,15 @@ app/
     breaking/page.tsx
     insider/page.tsx
     watchlist/page.tsx
+    price-hit/page.tsx
   api/cron/insider-scan/route.ts
   api/insider/alerts/route.ts
   api/insider/wallet/[address]/route.ts
   api/polymarket/top-volume/route.ts
   api/polymarket/breaking/route.ts
   api/polymarket/watchlist/route.ts
+  api/polymarket/price-hit/route.ts
+  api/polymarket/price-hit/refresh/route.ts
   layout.tsx
   page.tsx
 
@@ -194,6 +219,7 @@ components/
   BreakingCards.tsx
   InsiderPageClient.tsx
   WatchlistPageClient.tsx
+  PriceHitPageClient.tsx
   InsiderAlertCard.tsx
   ErrorState.tsx
   Skeletons.tsx
@@ -219,12 +245,18 @@ lib/
     volume.ts
   watchlist/
     summary.ts
+  price-hit/
+    assets.ts
+    cache.ts
+    classifier.ts
+    service.ts
   query/
     keys.ts
     useTopVolume.ts
     useBreaking.ts
     useInsiderAlerts.ts
     useWatchlist.ts
+    usePriceHit.ts
 
 tests/
   api/

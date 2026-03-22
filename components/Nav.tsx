@@ -31,6 +31,12 @@ export function Nav() {
               Search
             </Link>
             <Link
+              href="/price-hit"
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-800 transition hover:border-slate-900"
+            >
+              Price Hit
+            </Link>
+            <Link
               href="/insider"
               className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-800 transition hover:border-slate-900"
             >

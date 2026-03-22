@@ -26,6 +26,12 @@ export default function HomePage() {
             Search
           </Link>
           <Link
+            href="/price-hit"
+            className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-900"
+          >
+            Price Hit
+          </Link>
+          <Link
             href="/insider"
             className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-900"
           >

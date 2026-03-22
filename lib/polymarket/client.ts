@@ -153,3 +153,7 @@ export async function fetchPublicSearch(params: { query: string; limit: number; 
     { noStore: params.noStore },
   );
 }
+
+export async function fetchEventById(params: { eventId: string; noStore?: boolean }) {
+  return requestGamma(`/events/${encodeURIComponent(params.eventId)}`, {}, { noStore: params.noStore });
+}

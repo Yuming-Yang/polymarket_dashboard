@@ -1,4 +1,4 @@
-import { BreakingWindow, TopVolumeEntity, TopVolumeWindow } from "@/lib/polymarket/types";
+import { BreakingWindow, PriceHitAssetKey, TopVolumeEntity, TopVolumeWindow } from "@/lib/polymarket/types";
 
 type TopVolumeKeyParams = {
   entity: TopVolumeEntity;
@@ -26,6 +26,10 @@ type WatchlistKeyParams = {
   limit: number;
 };
 
+type PriceHitKeyParams = {
+  asset: PriceHitAssetKey;
+};
+
 export const queryKeys = {
   topVolume: (params: TopVolumeKeyParams) =>
     [
@@ -47,4 +51,5 @@ export const queryKeys = {
   insiderAlerts: (params: InsiderAlertsKeyParams) =>
     ["insider-alerts", params.minScore, params.limit, params.marketId ?? "all"] as const,
   watchlist: (params: WatchlistKeyParams) => ["watchlist", params.query.trim().toLowerCase(), params.limit] as const,
+  priceHit: (params: PriceHitKeyParams) => ["price-hit", params.asset] as const,
 };

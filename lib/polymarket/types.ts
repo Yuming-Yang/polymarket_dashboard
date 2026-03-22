@@ -4,6 +4,9 @@ export type TopVolumeKind = "market" | "event";
 export type BreakingWindow = "1h" | "24h" | "7d";
 export type ItemStatus = "active" | "resolved" | "closed" | "unknown";
 export type WatchlistSummaryStatus = "ready" | "unavailable";
+export type PriceHitAssetKey = "bitcoin" | "gold" | "oil" | "nvda" | "silver";
+export type PriceHitAiCacheStatus = "cache_hit" | "refreshed" | "stale_fallback";
+export type PriceHitBucketKind = "lower" | "interior" | "upper";
 
 export type TopVolumeParams = {
   entity: TopVolumeEntity;
@@ -93,6 +96,78 @@ export type WatchlistResponse = {
   events: WatchlistEventItem[];
 };
 
+export type PriceHitStructuredEvent = {
+  asset: PriceHitAssetKey;
+  eventId: string;
+  eventSlug: string | null;
+  eventTitle: string;
+  expiryDate: string;
+};
+
+export type PriceHitMarketItem = {
+  marketId: string;
+  eventId: string;
+  eventTitle: string;
+  title: string;
+  strikePrice: number;
+  probability: number;
+  volume24hUsd: number | null;
+  volumeTotalUsd: number | null;
+  url: string | null;
+  updatedAt: string | null;
+};
+
+export type PriceHitDistributionBucket = {
+  key: string;
+  kind: PriceHitBucketKind;
+  centerPrice: number;
+  probabilityDensity: number;
+  label: string;
+};
+
+export type PriceHitExpiryDistribution = {
+  expiryDate: string;
+  strikeCount: number;
+  impliedMedianPrice: number | null;
+  range90Low: number | null;
+  range90High: number | null;
+  chartMinPrice: number;
+  chartMaxPrice: number;
+  strikePrices: number[];
+  buckets: PriceHitDistributionBucket[];
+  markets: PriceHitMarketItem[];
+};
+
+export type PriceHitResponse = {
+  asset: PriceHitAssetKey;
+  assetLabel: string;
+  assetName: string;
+  fetchedAt: string;
+  aiCacheStatus: PriceHitAiCacheStatus;
+  aiRefreshedAt: string | null;
+  aiExpiresAt: string | null;
+  structuredEventCount: number;
+  defaultExpiry: string | null;
+  expiries: PriceHitExpiryDistribution[];
+};
+
+export type PriceHitRefreshAssetResult = {
+  asset: PriceHitAssetKey;
+  assetLabel: string;
+  ok: boolean;
+  status: "refreshed" | "stale_fallback" | "failed";
+  structuredEventCount: number;
+  refreshedAt: string | null;
+  expiresAt: string | null;
+  message: string | null;
+};
+
+export type PriceHitRefreshResponse = {
+  fetchedAt: string;
+  ok: boolean;
+  results: PriceHitRefreshAssetResult[];
+};
+
 export type GammaTagRaw = {
   id?: string | number | null;
   label?: string | null;
@@ -104,6 +179,8 @@ export type GammaMarketRaw = {
   question?: string | null;
   title?: string | null;
   slug?: string | null;
+  groupItemTitle?: string | null;
+  groupItemThreshold?: string | number | null;
   score?: string | number | null;
   active?: boolean | string | number | null;
   closed?: boolean | string | number | null;
@@ -121,6 +198,7 @@ export type GammaMarketRaw = {
   clobTokenIds?: string | Array<string | number> | null;
   tags?: GammaTagRaw[] | null;
   updatedAt?: string | null;
+  endDate?: string | null;
   [key: string]: unknown;
 };
 
@@ -134,6 +212,7 @@ export type GammaEventRaw = {
   resolved?: boolean | string | number | null;
   volume24hr?: string | number | null;
   volume?: string | number | null;
+  endDate?: string | null;
   markets?: GammaMarketRaw[] | null;
   tags?: GammaTagRaw[] | null;
   updatedAt?: string | null;

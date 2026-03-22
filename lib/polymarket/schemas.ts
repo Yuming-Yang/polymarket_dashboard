@@ -16,6 +16,8 @@ export const gammaMarketSchema = z
     question: z.string().nullable().optional(),
     title: z.string().nullable().optional(),
     slug: z.string().nullable().optional(),
+    groupItemTitle: z.string().nullable().optional(),
+    groupItemThreshold: numberLikeSchema,
     score: numberLikeSchema,
     active: boolLikeSchema,
     closed: boolLikeSchema,
@@ -33,6 +35,7 @@ export const gammaMarketSchema = z
     clobTokenIds: z.union([z.string(), z.array(z.union([z.string(), z.number()]))]).nullable().optional(),
     tags: z.array(gammaTagSchema).nullable().optional(),
     updatedAt: z.string().nullable().optional(),
+    endDate: z.string().nullable().optional(),
   })
   .passthrough();
 
@@ -47,6 +50,7 @@ export const gammaEventSchema = z
     resolved: boolLikeSchema,
     volume24hr: numberLikeSchema,
     volume: numberLikeSchema,
+    endDate: z.string().nullable().optional(),
     markets: z.array(gammaMarketSchema).nullable().optional(),
     tags: z.array(gammaTagSchema).nullable().optional(),
     updatedAt: z.string().nullable().optional(),
@@ -143,4 +147,78 @@ export const watchlistResponseSchema = z.object({
   summary: z.string().nullable(),
   summaryStatus: z.enum(["ready", "unavailable"]),
   events: z.array(watchlistEventItemSchema),
+});
+
+export const priceHitAssetKeySchema = z.enum(["bitcoin", "gold", "oil", "nvda", "silver"]);
+export const priceHitAiCacheStatusSchema = z.enum(["cache_hit", "refreshed", "stale_fallback"]);
+export const priceHitStructuredEventSchema = z.object({
+  asset: priceHitAssetKeySchema,
+  eventId: z.string(),
+  eventSlug: z.string().nullable(),
+  eventTitle: z.string(),
+  expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const priceHitMarketItemSchema = z.object({
+  marketId: z.string(),
+  eventId: z.string(),
+  eventTitle: z.string(),
+  title: z.string(),
+  strikePrice: z.number(),
+  probability: z.number().min(0).max(1),
+  volume24hUsd: z.number().nullable(),
+  volumeTotalUsd: z.number().nullable(),
+  url: z.string().nullable(),
+  updatedAt: z.string().nullable(),
+});
+
+export const priceHitDistributionBucketSchema = z.object({
+  key: z.string(),
+  kind: z.enum(["lower", "interior", "upper"]),
+  centerPrice: z.number(),
+  probabilityDensity: z.number().min(0).max(1),
+  label: z.string(),
+});
+
+export const priceHitExpiryDistributionSchema = z.object({
+  expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  strikeCount: z.number().int().min(0),
+  impliedMedianPrice: z.number().nullable(),
+  range90Low: z.number().nullable(),
+  range90High: z.number().nullable(),
+  chartMinPrice: z.number(),
+  chartMaxPrice: z.number(),
+  strikePrices: z.array(z.number()),
+  buckets: z.array(priceHitDistributionBucketSchema),
+  markets: z.array(priceHitMarketItemSchema),
+});
+
+export const priceHitResponseSchema = z.object({
+  asset: priceHitAssetKeySchema,
+  assetLabel: z.string(),
+  assetName: z.string(),
+  fetchedAt: z.string(),
+  aiCacheStatus: priceHitAiCacheStatusSchema,
+  aiRefreshedAt: z.string().nullable(),
+  aiExpiresAt: z.string().nullable(),
+  structuredEventCount: z.number().int().min(0),
+  defaultExpiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  expiries: z.array(priceHitExpiryDistributionSchema),
+});
+
+export const priceHitRefreshAssetResultSchema = z.object({
+  asset: priceHitAssetKeySchema,
+  assetLabel: z.string(),
+  ok: z.boolean(),
+  status: z.enum(["refreshed", "stale_fallback", "failed"]),
+  structuredEventCount: z.number().int().min(0),
+  refreshedAt: z.string().nullable(),
+  expiresAt: z.string().nullable(),
+  message: z.string().nullable(),
+});
+
+export const priceHitRefreshResponseSchema = z.object({
+  fetchedAt: z.string(),
+  ok: z.boolean(),
+  results: z.array(priceHitRefreshAssetResultSchema),
 });
