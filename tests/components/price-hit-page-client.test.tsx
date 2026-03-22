@@ -9,7 +9,7 @@ import { usePriceHit } from "@/lib/query/usePriceHit";
 const replaceMock = vi.fn();
 const refetchMock = vi.fn();
 const fetchMock = vi.fn<typeof fetch>();
-let currentSearchParams = new URLSearchParams("asset=bitcoin&expiry=2026-04-30");
+let currentSearchParams = new URLSearchParams("asset=bitcoin&expiry=2026-04-30&event=event-1");
 
 vi.mock("framer-motion", () => ({
   motion: {
@@ -68,56 +68,84 @@ const basePriceHitData = {
   aiExpiresAt: "2026-03-29T00:00:00.000Z",
   structuredEventCount: 2,
   defaultExpiry: "2026-04-30",
+  defaultEventId: "event-1",
   expiries: [
     {
       expiryDate: "2026-04-30",
-      eventId: "event-1",
-      eventTitle: "What price will Bitcoin hit in April 2026?",
-      strikeCount: 3,
-      impliedMedianPrice: 135_000,
-      range90Low: 95_000,
-      range90High: 175_000,
-      chartMinPrice: 80_000,
-      chartMaxPrice: 180_000,
-      strikePrices: [100_000, 120_000, 140_000],
-      buckets: [
-        { key: "lower", kind: "lower", startPrice: 80_000, endPrice: 100_000, centerPrice: 90_000, probabilityDensity: 0.2, label: "< $100k" },
-        { key: "mid-1", kind: "interior", startPrice: 100_000, endPrice: 120_000, centerPrice: 110_000, probabilityDensity: 0.1, label: "$100k - $120k" },
-        { key: "mid-2", kind: "interior", startPrice: 120_000, endPrice: 140_000, centerPrice: 130_000, probabilityDensity: 0.3, label: "$120k - $140k" },
-        { key: "upper", kind: "upper", startPrice: 140_000, endPrice: 180_000, centerPrice: 160_000, probabilityDensity: 0.4, label: ">= $140k" },
-      ],
-      markets: [
+      events: [
         {
-          marketId: "m-1",
+          expiryDate: "2026-04-30",
           eventId: "event-1",
-          eventTitle: "Bitcoin April Targets",
-          title: "Will Bitcoin reach $120k?",
-          side: "high" as const,
-          strikePrice: 120_000,
-          probability: 0.45,
-          volume24hUsd: 2500,
-          volumeTotalUsd: 12000,
-          url: "https://polymarket.com/market/btc-120k",
-          updatedAt: "2026-03-22T00:00:00.000Z",
+          eventTitle: "What price will Bitcoin hit in April 2026?",
+          strikeCount: 3,
+          impliedMedianPrice: 135_000,
+          range90Low: 95_000,
+          range90High: 175_000,
+          chartMinPrice: 80_000,
+          chartMaxPrice: 180_000,
+          strikePrices: [100_000, 120_000, 140_000],
+          buckets: [
+            { key: "lower", kind: "lower", startPrice: 80_000, endPrice: 100_000, centerPrice: 90_000, probabilityDensity: 0.2, label: "< $100k" },
+            { key: "mid-1", kind: "interior", startPrice: 100_000, endPrice: 120_000, centerPrice: 110_000, probabilityDensity: 0.1, label: "$100k - $120k" },
+            { key: "mid-2", kind: "interior", startPrice: 120_000, endPrice: 140_000, centerPrice: 130_000, probabilityDensity: 0.3, label: "$120k - $140k" },
+            { key: "upper", kind: "upper", startPrice: 140_000, endPrice: 180_000, centerPrice: 160_000, probabilityDensity: 0.4, label: ">= $140k" },
+          ],
+          markets: [
+            {
+              marketId: "m-1",
+              eventId: "event-1",
+              eventTitle: "Bitcoin April Targets",
+              title: "Will Bitcoin reach $120k?",
+              side: "high" as const,
+              strikePrice: 120_000,
+              probability: 0.45,
+              volume24hUsd: 2500,
+              volumeTotalUsd: 12000,
+              url: "https://polymarket.com/market/btc-120k",
+              updatedAt: "2026-03-22T00:00:00.000Z",
+            },
+          ],
+        },
+        {
+          expiryDate: "2026-04-30",
+          eventId: "event-1b",
+          eventTitle: "Alternative Bitcoin April Ladder",
+          strikeCount: 2,
+          impliedMedianPrice: 125_000,
+          range90Low: 90_000,
+          range90High: 160_000,
+          chartMinPrice: 75_000,
+          chartMaxPrice: 170_000,
+          strikePrices: [95_000, 130_000],
+          buckets: [
+            { key: "alt-lower", kind: "lower", startPrice: 75_000, endPrice: 95_000, centerPrice: 85_000, probabilityDensity: 0.25, label: "< $95k" },
+            { key: "alt-upper", kind: "upper", startPrice: 130_000, endPrice: 170_000, centerPrice: 150_000, probabilityDensity: 0.75, label: ">= $130k" },
+          ],
+          markets: [],
         },
       ],
     },
     {
       expiryDate: "2026-05-31",
-      eventId: "event-2",
-      eventTitle: "What price will Bitcoin hit in May 2026?",
-      strikeCount: 2,
-      impliedMedianPrice: 145_000,
-      range90Low: 105_000,
-      range90High: 185_000,
-      chartMinPrice: 90_000,
-      chartMaxPrice: 190_000,
-      strikePrices: [120_000, 150_000],
-      buckets: [
-        { key: "lower-may", kind: "lower", startPrice: 90_000, endPrice: 120_000, centerPrice: 105_000, probabilityDensity: 0.3, label: "< $120k" },
-        { key: "upper-may", kind: "upper", startPrice: 150_000, endPrice: 190_000, centerPrice: 170_000, probabilityDensity: 0.7, label: ">= $150k" },
+      events: [
+        {
+          expiryDate: "2026-05-31",
+          eventId: "event-2",
+          eventTitle: "What price will Bitcoin hit in May 2026?",
+          strikeCount: 2,
+          impliedMedianPrice: 145_000,
+          range90Low: 105_000,
+          range90High: 185_000,
+          chartMinPrice: 90_000,
+          chartMaxPrice: 190_000,
+          strikePrices: [120_000, 150_000],
+          buckets: [
+            { key: "lower-may", kind: "lower", startPrice: 90_000, endPrice: 120_000, centerPrice: 105_000, probabilityDensity: 0.3, label: "< $120k" },
+            { key: "upper-may", kind: "upper", startPrice: 150_000, endPrice: 190_000, centerPrice: 170_000, probabilityDensity: 0.7, label: ">= $150k" },
+          ],
+          markets: [],
+        },
       ],
-      markets: [],
     },
   ],
 };
@@ -127,11 +155,11 @@ describe("PriceHitPageClient", () => {
     replaceMock.mockReset();
     refetchMock.mockReset();
     fetchMock.mockReset();
-    currentSearchParams = new URLSearchParams("asset=bitcoin&expiry=2026-04-30");
+    currentSearchParams = new URLSearchParams("asset=bitcoin&expiry=2026-04-30&event=event-1");
     vi.stubGlobal("fetch", fetchMock);
   });
 
-  it("renders the chart data and updates URL state from asset chips and expiry tabs", () => {
+  it("renders the chart data and updates URL state from asset chips, expiry tabs, and event tabs", () => {
     vi.mocked(usePriceHit).mockReturnValue(
       asQueryResult({
         data: basePriceHitData,
@@ -156,6 +184,9 @@ describe("PriceHitPageClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "May '26" }));
     expect(replaceMock).toHaveBeenLastCalledWith("/price-hit?asset=bitcoin&expiry=2026-05-31", { scroll: false });
+
+    fireEvent.click(screen.getByRole("button", { name: "Alternative Bitcoin April Ladder" }));
+    expect(replaceMock).toHaveBeenLastCalledWith("/price-hit?asset=bitcoin&expiry=2026-04-30&event=event-1b", { scroll: false });
   });
 
   it("shows AI refresh loading feedback and refetches the active query", async () => {
@@ -216,6 +247,7 @@ describe("PriceHitPageClient", () => {
           ...basePriceHitData,
           structuredEventCount: 0,
           defaultExpiry: null,
+          defaultEventId: null,
           expiries: [],
         },
         isFetching: false,

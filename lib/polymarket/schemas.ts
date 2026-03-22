@@ -183,7 +183,7 @@ export const priceHitDistributionBucketSchema = z.object({
   label: z.string(),
 });
 
-export const priceHitExpiryDistributionSchema = z.object({
+export const priceHitEventDistributionSchema = z.object({
   expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   eventId: z.string(),
   eventTitle: z.string(),
@@ -198,6 +198,11 @@ export const priceHitExpiryDistributionSchema = z.object({
   markets: z.array(priceHitMarketItemSchema),
 });
 
+export const priceHitExpiryGroupSchema = z.object({
+  expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  events: z.array(priceHitEventDistributionSchema),
+});
+
 export const priceHitResponseSchema = z.object({
   asset: priceHitAssetKeySchema,
   assetLabel: z.string(),
@@ -208,7 +213,8 @@ export const priceHitResponseSchema = z.object({
   aiExpiresAt: z.string().nullable(),
   structuredEventCount: z.number().int().min(0),
   defaultExpiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-  expiries: z.array(priceHitExpiryDistributionSchema),
+  defaultEventId: z.string().nullable(),
+  expiries: z.array(priceHitExpiryGroupSchema),
 });
 
 export const priceHitRefreshAssetResultSchema = z.object({

@@ -2,7 +2,8 @@ import {
   GammaEventRaw,
   GammaMarketRaw,
   PriceHitDistributionBucket,
-  PriceHitExpiryDistribution,
+  PriceHitEventDistribution,
+  PriceHitExpiryGroup,
   PriceHitMarketItem,
   PriceHitMarketSide,
   PriceHitStructuredEvent,
@@ -470,7 +471,7 @@ function compareEventStrength(a: PriceHitNormalizedEvent, b: PriceHitNormalizedE
   return a.eventId.localeCompare(b.eventId);
 }
 
-function buildSelectedEvents(markets: PriceHitNormalizedMarket[]) {
+function buildEventCandidates(markets: PriceHitNormalizedMarket[]) {
   const eventsByKey = new Map<string, Map<string, PriceHitNormalizedMarket>>();
 
   for (const market of markets) {
@@ -514,7 +515,7 @@ function buildSelectedEvents(markets: PriceHitNormalizedMarket[]) {
 
   return Array.from(groupedByExpiry.entries()).map(([expiryDate, candidates]) => ({
     expiryDate,
-    event: [...candidates].sort(compareEventStrength)[0]!,
+    events: [...candidates].sort(compareEventStrength),
   }));
 }
 
@@ -629,47 +630,66 @@ function interpolateBucketQuantile(buckets: PriceHitDistributionBucket[], quanti
   return buckets[buckets.length - 1]!.endPrice;
 }
 
-export function buildPriceHitExpiryDistributions(markets: PriceHitNormalizedMarket[]): PriceHitExpiryDistribution[] {
-  return buildSelectedEvents(markets)
-    .map(({ expiryDate, event }) => {
-      const chart = buildDistributionBuckets(event.markets);
+function buildEventDistribution(event: PriceHitNormalizedEvent): PriceHitEventDistribution | null {
+  const chart = buildDistributionBuckets(event.markets);
 
-      if (!chart || chart.buckets.length === 0) {
-        return null;
+  if (!chart || chart.buckets.length === 0) {
+    return null;
+  }
+
+  return {
+    expiryDate: event.expiryDate,
+    eventId: event.eventId,
+    eventTitle: event.eventTitle,
+    strikeCount: event.markets.length,
+    impliedMedianPrice: interpolateBucketQuantile(chart.buckets, 0.5),
+    range90Low: interpolateBucketQuantile(chart.buckets, 0.05),
+    range90High: interpolateBucketQuantile(chart.buckets, 0.95),
+    chartMinPrice: chart.chartMinPrice,
+    chartMaxPrice: chart.chartMaxPrice,
+    strikePrices: chart.strikePrices,
+    buckets: chart.buckets,
+    markets: event.markets.map((market) => ({
+      marketId: market.marketId,
+      eventId: market.eventId,
+      eventTitle: market.eventTitle,
+      title: market.title,
+      side: market.side,
+      strikePrice: market.strikePrice,
+      probability: market.probability,
+      volume24hUsd: market.volume24hUsd,
+      volumeTotalUsd: market.volumeTotalUsd,
+      url: market.url,
+      updatedAt: market.updatedAt,
+    })),
+  } satisfies PriceHitEventDistribution;
+}
+
+export function buildPriceHitExpiryGroups(markets: PriceHitNormalizedMarket[]): PriceHitExpiryGroup[] {
+  const grouped = new Map<string, PriceHitEventDistribution[]>();
+
+  for (const { expiryDate, events } of buildEventCandidates(markets)) {
+    for (const event of events) {
+      const distribution = buildEventDistribution(event);
+      if (!distribution) {
+        continue;
       }
 
-      return {
-        expiryDate,
-        eventId: event.eventId,
-        eventTitle: event.eventTitle,
-        strikeCount: event.markets.length,
-        impliedMedianPrice: interpolateBucketQuantile(chart.buckets, 0.5),
-        range90Low: interpolateBucketQuantile(chart.buckets, 0.05),
-        range90High: interpolateBucketQuantile(chart.buckets, 0.95),
-        chartMinPrice: chart.chartMinPrice,
-        chartMaxPrice: chart.chartMaxPrice,
-        strikePrices: chart.strikePrices,
-        buckets: chart.buckets,
-        markets: event.markets.map((market) => ({
-          marketId: market.marketId,
-          eventId: market.eventId,
-          eventTitle: market.eventTitle,
-          title: market.title,
-          side: market.side,
-          strikePrice: market.strikePrice,
-          probability: market.probability,
-          volume24hUsd: market.volume24hUsd,
-          volumeTotalUsd: market.volumeTotalUsd,
-          url: market.url,
-          updatedAt: market.updatedAt,
-        })),
-      } satisfies PriceHitExpiryDistribution;
-    })
-    .filter((distribution): distribution is PriceHitExpiryDistribution => distribution !== null)
+      const existingEvents = grouped.get(expiryDate) ?? [];
+      existingEvents.push(distribution);
+      grouped.set(expiryDate, existingEvents);
+    }
+  }
+
+  return Array.from(grouped.entries())
+    .map(([expiryDate, events]) => ({
+      expiryDate,
+      events,
+    }))
     .sort((a, b) => a.expiryDate.localeCompare(b.expiryDate));
 }
 
-export function getDefaultPriceHitExpiry(expiries: Pick<PriceHitExpiryDistribution, "expiryDate">[], now = new Date()) {
+export function getDefaultPriceHitExpiry(expiries: Pick<PriceHitExpiryGroup, "expiryDate">[], now = new Date()) {
   if (expiries.length === 0) {
     return null;
   }
@@ -677,4 +697,13 @@ export function getDefaultPriceHitExpiry(expiries: Pick<PriceHitExpiryDistributi
   const today = now.toISOString().slice(0, 10);
   const upcoming = expiries.find((expiry) => expiry.expiryDate >= today);
   return upcoming?.expiryDate ?? expiries[0]!.expiryDate;
+}
+
+export function getDefaultPriceHitEventId(expiries: PriceHitExpiryGroup[], defaultExpiry: string | null) {
+  if (!defaultExpiry) {
+    return expiries[0]?.events[0]?.eventId ?? null;
+  }
+
+  const matchingExpiry = expiries.find((expiry) => expiry.expiryDate === defaultExpiry);
+  return matchingExpiry?.events[0]?.eventId ?? expiries[0]?.events[0]?.eventId ?? null;
 }

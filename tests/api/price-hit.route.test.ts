@@ -99,7 +99,7 @@ describe("GET /api/polymarket/price-hit", () => {
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(json.aiCacheStatus).toBe("cache_hit");
     expect(json.expiries).toHaveLength(1);
-    expect(json.expiries[0].strikeCount).toBe(2);
+    expect(json.expiries[0].events[0].strikeCount).toBe(2);
     expect(classifyPriceHitEvents).not.toHaveBeenCalled();
   });
 
@@ -174,6 +174,7 @@ describe("GET /api/polymarket/price-hit", () => {
 
     expect(response.status).toBe(200);
     expect(json.aiCacheStatus).toBe("refreshed");
+    expect(json.defaultEventId).toBe("event-2");
     expect(upsertPriceHitCache).toHaveBeenCalledTimes(1);
     expect(fetchEventById).toHaveBeenCalledWith({ eventId: "event-2", noStore: true });
   });

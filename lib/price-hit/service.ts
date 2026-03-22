@@ -5,7 +5,7 @@ import { classifyPriceHitEvents } from "@/lib/price-hit/classifier";
 import { getPriceHitCache, isPriceHitCacheExpired, type PriceHitCacheEntry, upsertPriceHitCache } from "@/lib/price-hit/cache";
 import { fetchEventById } from "@/lib/polymarket/client";
 import { gammaEventSchema } from "@/lib/polymarket/schemas";
-import { buildPriceHitExpiryDistributions, getDefaultPriceHitExpiry, normalizePriceHitMarketsForEvent } from "@/lib/polymarket/price-hit";
+import { buildPriceHitExpiryGroups, getDefaultPriceHitEventId, getDefaultPriceHitExpiry, normalizePriceHitMarketsForEvent } from "@/lib/polymarket/price-hit";
 import { PriceHitAiCacheStatus, PriceHitAssetKey, PriceHitRefreshAssetResult, PriceHitRefreshResponse, PriceHitResponse } from "@/lib/polymarket/types";
 
 const PRICE_FETCH_CONCURRENCY = 3;
@@ -148,6 +148,7 @@ export async function getPriceHitData(assetKey: PriceHitAssetKey): Promise<Price
       aiExpiresAt: cacheResolution.entry?.expiresAt ?? null,
       structuredEventCount: 0,
       defaultExpiry: null,
+      defaultEventId: null,
       expiries: [],
     };
   }
@@ -161,7 +162,8 @@ export async function getPriceHitData(assetKey: PriceHitAssetKey): Promise<Price
   }
 
   const markets = liveEvents.flatMap(({ rawEvent, structuredEvent }) => normalizePriceHitMarketsForEvent(rawEvent, structuredEvent));
-  const expiries = buildPriceHitExpiryDistributions(markets);
+  const expiries = buildPriceHitExpiryGroups(markets);
+  const defaultExpiry = getDefaultPriceHitExpiry(expiries);
 
   return {
     asset: asset.key,
@@ -172,7 +174,8 @@ export async function getPriceHitData(assetKey: PriceHitAssetKey): Promise<Price
     aiRefreshedAt: cacheResolution.entry?.refreshedAt ?? null,
     aiExpiresAt: cacheResolution.entry?.expiresAt ?? null,
     structuredEventCount: structuredEvents.length,
-    defaultExpiry: getDefaultPriceHitExpiry(expiries),
+    defaultExpiry,
+    defaultEventId: getDefaultPriceHitEventId(expiries, defaultExpiry),
     expiries,
   };
 }

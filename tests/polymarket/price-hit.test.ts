@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  buildPriceHitExpiryDistributions,
+  buildPriceHitExpiryGroups,
   classifyPriceHitMarketSide,
   extractStrikePrice,
+  getDefaultPriceHitEventId,
   getDefaultPriceHitExpiry,
   normalizePriceHitMarketsForEvent,
   repairPriceHitCdfProbabilities,
@@ -234,8 +235,10 @@ describe("price hit distributions", () => {
       },
     ];
 
-    const [distribution] = buildPriceHitExpiryDistributions(markets);
+    const [expiryGroup] = buildPriceHitExpiryGroups(markets);
+    const distribution = expiryGroup?.events[0];
 
+    expect(expiryGroup?.events).toHaveLength(2);
     expect(distribution).toBeDefined();
     expect(distribution?.eventId).toBe("event-a");
     expect(distribution?.strikeCount).toBe(4);
@@ -258,5 +261,48 @@ describe("price hit distributions", () => {
     );
 
     expect(defaultExpiry).toBe("2026-04-15");
+  });
+
+  it("selects the first event on the default expiry by default", () => {
+    const defaultEventId = getDefaultPriceHitEventId(
+      [
+        {
+          expiryDate: "2026-04-15",
+          events: [
+            {
+              expiryDate: "2026-04-15",
+              eventId: "event-a",
+              eventTitle: "Event A",
+              strikeCount: 2,
+              impliedMedianPrice: 1,
+              range90Low: 1,
+              range90High: 2,
+              chartMinPrice: 0,
+              chartMaxPrice: 3,
+              strikePrices: [1, 2],
+              buckets: [],
+              markets: [],
+            },
+            {
+              expiryDate: "2026-04-15",
+              eventId: "event-b",
+              eventTitle: "Event B",
+              strikeCount: 2,
+              impliedMedianPrice: 1,
+              range90Low: 1,
+              range90High: 2,
+              chartMinPrice: 0,
+              chartMaxPrice: 3,
+              strikePrices: [1, 2],
+              buckets: [],
+              markets: [],
+            },
+          ],
+        },
+      ],
+      "2026-04-15",
+    );
+
+    expect(defaultEventId).toBe("event-a");
   });
 });

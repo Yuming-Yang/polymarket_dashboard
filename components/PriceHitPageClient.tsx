@@ -14,13 +14,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PRICE_HIT_ASSETS, parsePriceHitAssetKey } from "@/lib/price-hit/assets";
 import { formatProbability, formatRelativeUpdatedAt, formatUsd } from "@/lib/format";
 import { priceHitRefreshResponseSchema } from "@/lib/polymarket/schemas";
-import { PriceHitDistributionBucket, PriceHitExpiryDistribution, PriceHitRefreshResponse } from "@/lib/polymarket/types";
+import { PriceHitDistributionBucket, PriceHitEventDistribution, PriceHitRefreshResponse } from "@/lib/polymarket/types";
 import { usePriceHit } from "@/lib/query/usePriceHit";
 import { cn } from "@/lib/utils";
 
 type PriceHitPageState = {
   asset: ReturnType<typeof parsePriceHitAssetKey>;
   expiry: string | null;
+  eventId: string | null;
 };
 
 type RefreshBannerState = {
@@ -34,6 +35,7 @@ function parseSearchParams(searchParams: URLSearchParams): PriceHitPageState {
   return {
     asset: parsePriceHitAssetKey(searchParams.get("asset")),
     expiry: rawExpiry && rawExpiry.trim().length > 0 ? rawExpiry : null,
+    eventId: searchParams.get("event"),
   };
 }
 
@@ -74,6 +76,15 @@ function formatExpiryHeading(expiryDate: string) {
   }).format(parsed);
 }
 
+function formatEventLabel(eventTitle: string) {
+  const normalized = eventTitle.replace(/\s+/g, " ").trim();
+  if (normalized.length <= 44) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, 43).trimEnd()}…`;
+}
+
 function bucketFill(bucket: PriceHitDistributionBucket, index: number, total: number) {
   if (bucket.kind === "lower" || bucket.kind === "upper") {
     return "#d9e5f2";
@@ -94,26 +105,26 @@ function bucketFill(bucket: PriceHitDistributionBucket, index: number, total: nu
   return "#8eb5d8";
 }
 
-function DistributionChart({ assetLabel, expiry }: { assetLabel: string; expiry: PriceHitExpiryDistribution }) {
+function DistributionChart({ assetLabel, eventDistribution }: { assetLabel: string; eventDistribution: PriceHitEventDistribution }) {
   const width = 920;
   const height = 380;
   const margin = { top: 20, right: 20, bottom: 52, left: 58 };
   const plotWidth = width - margin.left - margin.right;
   const plotHeight = height - margin.top - margin.bottom;
-  const maxDensity = Math.max(...expiry.buckets.map((bucket) => bucket.probabilityDensity), 0.01);
-  const xDomain = Math.max(expiry.chartMaxPrice - expiry.chartMinPrice, 1);
+  const maxDensity = Math.max(...eventDistribution.buckets.map((bucket) => bucket.probabilityDensity), 0.01);
+  const xDomain = Math.max(eventDistribution.chartMaxPrice - eventDistribution.chartMinPrice, 1);
   const tickCount = 5;
-  const strikeTickStep = Math.max(1, Math.ceil(expiry.strikePrices.length / 6));
+  const strikeTickStep = Math.max(1, Math.ceil(eventDistribution.strikePrices.length / 6));
 
-  const xScale = (value: number) => margin.left + ((value - expiry.chartMinPrice) / xDomain) * plotWidth;
+  const xScale = (value: number) => margin.left + ((value - eventDistribution.chartMinPrice) / xDomain) * plotWidth;
   const yScale = (value: number) => margin.top + plotHeight - (value / maxDensity) * plotHeight;
 
   return (
     <div className="rounded-[2rem] border border-slate-200/80 bg-white/90 p-4 shadow-sm sm:p-6">
       <p className="text-lg font-medium tracking-tight text-slate-700">
-        Implied probability distribution · {assetLabel} · {formatExpiryHeading(expiry.expiryDate)} expiry
+        Implied probability distribution · {assetLabel} · {formatExpiryHeading(eventDistribution.expiryDate)} expiry
       </p>
-      <p className="mt-1 text-sm text-slate-500">Using event: {expiry.eventTitle}</p>
+      <p className="mt-1 text-sm text-slate-500">Using event: {eventDistribution.eventTitle}</p>
 
       <svg viewBox={`0 0 ${width} ${height}`} className="mt-4 h-[21rem] w-full" role="img" aria-label={`${assetLabel} distribution chart`}>
         {Array.from({ length: tickCount + 1 }).map((_, index) => {
@@ -150,7 +161,7 @@ function DistributionChart({ assetLabel, expiry }: { assetLabel: string; expiry:
           strokeWidth="1.2"
         />
 
-        {expiry.buckets.map((bucket, index) => {
+        {eventDistribution.buckets.map((bucket, index) => {
           const x = xScale(bucket.startPrice) + 1;
           const width = Math.max(6, xScale(bucket.endPrice) - xScale(bucket.startPrice) - 2);
           const y = yScale(bucket.probabilityDensity);
@@ -167,14 +178,14 @@ function DistributionChart({ assetLabel, expiry }: { assetLabel: string; expiry:
                 width={width}
                 height={Math.max(barHeight, 2)}
                 rx={8}
-                fill={bucketFill(bucket, index, expiry.buckets.length)}
+                fill={bucketFill(bucket, index, eventDistribution.buckets.length)}
               />
             </g>
           );
         })}
 
-        {expiry.strikePrices.map((strikePrice, index) => {
-          const shouldShowTick = index % strikeTickStep === 0 || index === expiry.strikePrices.length - 1;
+        {eventDistribution.strikePrices.map((strikePrice, index) => {
+          const shouldShowTick = index % strikeTickStep === 0 || index === eventDistribution.strikePrices.length - 1;
           if (!shouldShowTick) {
             return null;
           }
@@ -239,7 +250,7 @@ function SummaryCard({
   );
 }
 
-function UnderlyingMarketCard({ market }: { market: PriceHitExpiryDistribution["markets"][number] }) {
+function UnderlyingMarketCard({ market }: { market: PriceHitEventDistribution["markets"][number] }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
       <div className="flex items-start justify-between gap-4">
@@ -401,13 +412,31 @@ export function PriceHitPageClient() {
     asset: state.asset,
   });
 
-  const selectedExpiry = useMemo(() => {
+  const selectedExpiryGroup = useMemo(() => {
     if (!query.data) {
       return null;
     }
 
-    return query.data.expiries.find((expiry) => expiry.expiryDate === state.expiry) ?? query.data.expiries.find((expiry) => expiry.expiryDate === query.data.defaultExpiry) ?? null;
+    return (
+      query.data.expiries.find((expiry) => expiry.expiryDate === state.expiry) ??
+      query.data.expiries.find((expiry) => expiry.expiryDate === query.data.defaultExpiry) ??
+      query.data.expiries[0] ??
+      null
+    );
   }, [query.data, state.expiry]);
+
+  const selectedEvent = useMemo(() => {
+    if (!query.data || !selectedExpiryGroup) {
+      return null;
+    }
+
+    return (
+      selectedExpiryGroup.events.find((event) => event.eventId === state.eventId) ??
+      selectedExpiryGroup.events.find((event) => event.eventId === query.data.defaultEventId) ??
+      selectedExpiryGroup.events[0] ??
+      null
+    );
+  }, [query.data, selectedExpiryGroup, state.eventId]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(Date.now()), 1_000);
@@ -427,9 +456,9 @@ export function PriceHitPageClient() {
       shouldReplace = true;
     }
 
-    if (selectedExpiry?.expiryDate) {
-      if (next.get("expiry") !== selectedExpiry.expiryDate) {
-        next.set("expiry", selectedExpiry.expiryDate);
+    if (selectedExpiryGroup?.expiryDate) {
+      if (next.get("expiry") !== selectedExpiryGroup.expiryDate) {
+        next.set("expiry", selectedExpiryGroup.expiryDate);
         shouldReplace = true;
       }
     } else if (next.has("expiry")) {
@@ -437,10 +466,20 @@ export function PriceHitPageClient() {
       shouldReplace = true;
     }
 
+    if (selectedEvent?.eventId) {
+      if (next.get("event") !== selectedEvent.eventId) {
+        next.set("event", selectedEvent.eventId);
+        shouldReplace = true;
+      }
+    } else if (next.has("event")) {
+      next.delete("event");
+      shouldReplace = true;
+    }
+
     if (shouldReplace) {
       router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     }
-  }, [pathname, query.data, router, searchParams, selectedExpiry?.expiryDate, state.asset]);
+  }, [pathname, query.data, router, searchParams, selectedEvent?.eventId, selectedExpiryGroup?.expiryDate, state.asset]);
 
   const updateSearchParamState = useCallback(
     (partial: Partial<PriceHitPageState>) => {
@@ -455,6 +494,12 @@ export function PriceHitPageClient() {
         next.set("expiry", nextState.expiry);
       } else {
         next.delete("expiry");
+      }
+
+      if (nextState.eventId) {
+        next.set("event", nextState.eventId);
+      } else {
+        next.delete("event");
       }
 
       router.replace(`${pathname}?${next.toString()}`, { scroll: false });
@@ -522,7 +567,7 @@ export function PriceHitPageClient() {
               <button
                 key={asset.key}
                 type="button"
-                onClick={() => updateSearchParamState({ asset: asset.key, expiry: null })}
+                onClick={() => updateSearchParamState({ asset: asset.key, expiry: null, eventId: null })}
                 className={cn(
                   "rounded-full border px-4 py-2.5 text-sm font-medium transition",
                   state.asset === asset.key
@@ -617,10 +662,10 @@ export function PriceHitPageClient() {
                     <button
                       key={expiry.expiryDate}
                       type="button"
-                      onClick={() => updateSearchParamState({ expiry: expiry.expiryDate })}
+                      onClick={() => updateSearchParamState({ expiry: expiry.expiryDate, eventId: null })}
                       className={cn(
                         "rounded-full border px-4 py-2.5 text-sm font-medium transition",
-                        selectedExpiry?.expiryDate === expiry.expiryDate
+                        selectedExpiryGroup?.expiryDate === expiry.expiryDate
                           ? "border-amber-200 bg-amber-50 text-slate-950"
                           : "border-slate-200 bg-white text-slate-600 hover:border-slate-900 hover:text-slate-950",
                       )}
@@ -629,27 +674,51 @@ export function PriceHitPageClient() {
                     </button>
                   ))}
                 </div>
+
+                {selectedExpiryGroup && selectedExpiryGroup.events.length > 1 ? (
+                  <div className="space-y-2">
+                    <p className="text-xs uppercase tracking-[0.22em] text-slate-400">Events On This Expiry</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedExpiryGroup.events.map((event) => (
+                        <button
+                          key={event.eventId}
+                          type="button"
+                          onClick={() => updateSearchParamState({ expiry: selectedExpiryGroup.expiryDate, eventId: event.eventId })}
+                          className={cn(
+                            "max-w-full rounded-full border px-4 py-2.5 text-sm font-medium transition",
+                            selectedEvent?.eventId === event.eventId
+                              ? "border-slate-950 bg-slate-950 text-white shadow-sm"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-slate-900 hover:text-slate-950",
+                          )}
+                          title={event.eventTitle}
+                        >
+                          {formatEventLabel(event.eventTitle)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
-              {selectedExpiry ? (
+              {selectedEvent ? (
                 <>
                   <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
-                    <DistributionChart assetLabel={query.data.assetLabel} expiry={selectedExpiry} />
+                    <DistributionChart assetLabel={query.data.assetLabel} eventDistribution={selectedEvent} />
 
                     <div className="space-y-4">
                       <SummaryCard
                         label="Implied median"
-                        value={formatPrice(selectedExpiry.impliedMedianPrice)}
+                        value={formatPrice(selectedEvent.impliedMedianPrice)}
                         sublabel="Median of the repaired survival curve"
                       />
                       <SummaryCard
                         label="90% range"
-                        value={`${formatPrice(selectedExpiry.range90Low)} - ${formatPrice(selectedExpiry.range90High)}`}
+                        value={`${formatPrice(selectedEvent.range90Low)} - ${formatPrice(selectedEvent.range90High)}`}
                         sublabel="5th to 95th percentile range"
                       />
                       <SummaryCard
                         label="Strike prices used"
-                        value={String(selectedExpiry.strikeCount)}
+                        value={String(selectedEvent.strikeCount)}
                         sublabel="Unique liquid strikes after dedupe"
                       />
                     </div>
@@ -662,7 +731,7 @@ export function PriceHitPageClient() {
                     </div>
 
                     <div className="grid gap-3 md:grid-cols-2">
-                      {selectedExpiry.markets.map((market) => (
+                      {selectedEvent.markets.map((market) => (
                         <UnderlyingMarketCard key={market.marketId} market={market} />
                       ))}
                     </div>

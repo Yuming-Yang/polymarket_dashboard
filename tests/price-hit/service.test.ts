@@ -48,6 +48,7 @@ describe("price hit service", () => {
     );
     expect(fetchEventById).not.toHaveBeenCalled();
     expect(response.structuredEventCount).toBe(0);
+    expect(response.defaultEventId).toBeNull();
     expect(response.expiries).toEqual([]);
     expect(response.aiCacheStatus).toBe("refreshed");
   });

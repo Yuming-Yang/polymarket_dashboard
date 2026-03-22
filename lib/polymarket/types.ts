@@ -129,7 +129,7 @@ export type PriceHitDistributionBucket = {
   label: string;
 };
 
-export type PriceHitExpiryDistribution = {
+export type PriceHitEventDistribution = {
   expiryDate: string;
   eventId: string;
   eventTitle: string;
@@ -144,6 +144,11 @@ export type PriceHitExpiryDistribution = {
   markets: PriceHitMarketItem[];
 };
 
+export type PriceHitExpiryGroup = {
+  expiryDate: string;
+  events: PriceHitEventDistribution[];
+};
+
 export type PriceHitResponse = {
   asset: PriceHitAssetKey;
   assetLabel: string;
@@ -154,7 +159,8 @@ export type PriceHitResponse = {
   aiExpiresAt: string | null;
   structuredEventCount: number;
   defaultExpiry: string | null;
-  expiries: PriceHitExpiryDistribution[];
+  defaultEventId: string | null;
+  expiries: PriceHitExpiryGroup[];
 };
 
 export type PriceHitRefreshAssetResult = {
