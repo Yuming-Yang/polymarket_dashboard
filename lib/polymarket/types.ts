@@ -73,12 +73,24 @@ export type WatchlistMarketItem = {
   updatedAt: string | null;
 };
 
+export type WatchlistEventItem = {
+  id: string;
+  title: string;
+  url: string | null;
+  status: ItemStatus;
+  volume24hUsd: number | null;
+  volumeTotalUsd: number | null;
+  marketCount: number;
+  updatedAt: string | null;
+  markets: WatchlistMarketItem[];
+};
+
 export type WatchlistResponse = {
   query: string;
   fetchedAt: string;
   summary: string | null;
   summaryStatus: WatchlistSummaryStatus;
-  items: WatchlistMarketItem[];
+  events: WatchlistEventItem[];
 };
 
 export type GammaTagRaw = {

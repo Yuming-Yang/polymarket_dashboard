@@ -125,10 +125,22 @@ export const watchlistMarketItemSchema = z.object({
   updatedAt: z.string().nullable(),
 });
 
+export const watchlistEventItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  url: z.string().nullable(),
+  status: z.enum(["active", "resolved", "closed", "unknown"]),
+  volume24hUsd: z.number().nullable(),
+  volumeTotalUsd: z.number().nullable(),
+  marketCount: z.number().int().nonnegative(),
+  updatedAt: z.string().nullable(),
+  markets: z.array(watchlistMarketItemSchema),
+});
+
 export const watchlistResponseSchema = z.object({
   query: z.string(),
   fetchedAt: z.string(),
   summary: z.string().nullable(),
   summaryStatus: z.enum(["ready", "unavailable"]),
-  items: z.array(watchlistMarketItemSchema),
+  events: z.array(watchlistEventItemSchema),
 });

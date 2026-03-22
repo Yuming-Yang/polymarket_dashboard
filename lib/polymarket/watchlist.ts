@@ -1,16 +1,21 @@
 import { z } from "zod";
 
 import { gammaPublicSearchResponseSchema } from "@/lib/polymarket/schemas";
-import { ItemStatus, WatchlistMarketItem } from "@/lib/polymarket/types";
+import { ItemStatus, WatchlistEventItem, WatchlistMarketItem } from "@/lib/polymarket/types";
 
 type SearchResponse = z.infer<typeof gammaPublicSearchResponseSchema>;
 type SearchEvent = NonNullable<SearchResponse["events"]>[number];
 type SearchMarket = NonNullable<SearchEvent["markets"]>[number];
 
-type SearchCandidate = {
+type SearchMarketCandidate = {
   item: WatchlistMarketItem;
-  eventRank: number;
   marketRank: number;
+  relevanceScore: number | null;
+};
+
+type SearchEventCandidate = {
+  item: WatchlistEventItem;
+  eventRank: number;
   relevanceScore: number | null;
 };
 
@@ -117,25 +122,25 @@ function normalizeTimestamp(value: unknown): string | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
 }
 
-function inferStatus(rawMarket: { active?: unknown; closed?: unknown; resolved?: unknown }): ItemStatus {
-  if (toBoolean(rawMarket.closed)) {
+function inferStatus(raw: { active?: unknown; closed?: unknown; resolved?: unknown }): ItemStatus {
+  if (toBoolean(raw.closed)) {
     return "closed";
   }
 
-  if (toBoolean(rawMarket.resolved)) {
+  if (toBoolean(raw.resolved)) {
     return "resolved";
   }
 
-  if (toBoolean(rawMarket.active)) {
+  if (toBoolean(raw.active)) {
     return "active";
   }
 
   return "unknown";
 }
 
-function toPolymarketUrl(slug: unknown): string | null {
+function toPolymarketUrl(kind: "market" | "event", slug: unknown): string | null {
   const normalizedSlug = toString(slug);
-  return normalizedSlug ? `https://polymarket.com/market/${normalizedSlug}` : null;
+  return normalizedSlug ? `https://polymarket.com/${kind}/${normalizedSlug}` : null;
 }
 
 function normalizeBinaryPrices(rawMarket: SearchMarket) {
@@ -179,7 +184,7 @@ function normalizeWatchlistMarket(rawMarket: SearchMarket): WatchlistMarketItem 
     lastTradePrice: directLastTradePrice ?? yesPrice,
     volume24hUsd: toNumber(rawMarket.volume24hr),
     volumeTotalUsd: toNumber(rawMarket.volumeNum) ?? toNumber(rawMarket.volume),
-    url: toPolymarketUrl(rawMarket.slug),
+    url: toPolymarketUrl("market", rawMarket.slug),
     status: inferStatus(rawMarket),
     updatedAt: normalizeTimestamp(rawMarket.updatedAt),
   };
@@ -205,14 +210,10 @@ function compareNullableNumberDesc(a: number | null, b: number | null) {
   return b - a;
 }
 
-function compareCandidates(a: SearchCandidate, b: SearchCandidate) {
+function compareMarketCandidates(a: SearchMarketCandidate, b: SearchMarketCandidate) {
   const scoreComparison = compareNullableNumberDesc(a.relevanceScore, b.relevanceScore);
   if (scoreComparison !== 0) {
     return scoreComparison;
-  }
-
-  if (a.eventRank !== b.eventRank) {
-    return a.eventRank - b.eventRank;
   }
 
   const volumeComparison = compareNullableNumberDesc(a.item.volumeTotalUsd ?? a.item.volume24hUsd, b.item.volumeTotalUsd ?? b.item.volume24hUsd);
@@ -227,38 +228,148 @@ function compareCandidates(a: SearchCandidate, b: SearchCandidate) {
   return a.item.title.localeCompare(b.item.title);
 }
 
-function flattenCandidates(searchResponse: SearchResponse): SearchCandidate[] {
-  const events = searchResponse.events ?? [];
+function latestTimestamp(timestamps: Array<string | null>) {
+  const normalized = timestamps.filter((timestamp): timestamp is string => Boolean(timestamp));
 
-  return events.flatMap((event, eventRank) => {
-    const markets = event.markets ?? [];
-    const eventScore = toNumber(event.score);
+  if (normalized.length === 0) {
+    return null;
+  }
 
-    return markets
-      .filter((market) => isActiveSearchMarket(market))
-      .map((market, marketRank) => ({
-        item: normalizeWatchlistMarket(market),
-        eventRank,
-        marketRank,
-        relevanceScore: toNumber(market.score) ?? eventScore,
-      }));
+  return normalized.reduce((latest, value) => {
+    return new Date(value).getTime() > new Date(latest).getTime() ? value : latest;
   });
 }
 
-export function normalizeWatchlistMarkets(rawSearchResponse: unknown): WatchlistMarketItem[] {
-  const searchResponse = gammaPublicSearchResponseSchema.parse(rawSearchResponse);
-  const candidates = flattenCandidates(searchResponse);
-  const bestById = new Map<string, SearchCandidate>();
+function sumValues(values: Array<number | null>) {
+  const numericValues = values.filter((value): value is number => value !== null);
+  if (numericValues.length === 0) {
+    return null;
+  }
 
-  for (const candidate of candidates) {
+  return numericValues.reduce((total, value) => total + value, 0);
+}
+
+function normalizeEventMarkets(rawEvent: SearchEvent) {
+  const markets = rawEvent.markets ?? [];
+  const eventScore = toNumber(rawEvent.score);
+  const bestById = new Map<string, SearchMarketCandidate>();
+
+  for (const [marketRank, market] of markets.entries()) {
+    if (!isActiveSearchMarket(market)) {
+      continue;
+    }
+
+    const candidate: SearchMarketCandidate = {
+      item: normalizeWatchlistMarket(market),
+      marketRank,
+      relevanceScore: toNumber(market.score) ?? eventScore,
+    };
+
     const current = bestById.get(candidate.item.id);
-
-    if (!current || compareCandidates(candidate, current) < 0) {
+    if (!current || compareMarketCandidates(candidate, current) < 0) {
       bestById.set(candidate.item.id, candidate);
     }
   }
 
-  return Array.from(bestById.values())
-    .sort(compareCandidates)
-    .map((candidate) => candidate.item);
+  return Array.from(bestById.values()).sort(compareMarketCandidates);
+}
+
+function normalizeWatchlistEvent(rawEvent: SearchEvent, eventRank: number): SearchEventCandidate | null {
+  const marketCandidates = normalizeEventMarkets(rawEvent);
+
+  if (marketCandidates.length === 0) {
+    return null;
+  }
+
+  const markets = marketCandidates.map((candidate) => candidate.item);
+  const fallbackStatus = inferStatus(rawEvent);
+
+  const item: WatchlistEventItem = {
+    id: toString(rawEvent.id) ?? toString(rawEvent.slug) ?? toString(rawEvent.title) ?? `event-${eventRank}`,
+    title: toString(rawEvent.title) ?? markets[0]?.title ?? "Untitled event",
+    url: toPolymarketUrl("event", rawEvent.slug),
+    status: fallbackStatus === "unknown" ? "active" : fallbackStatus,
+    volume24hUsd: toNumber(rawEvent.volume24hr) ?? sumValues(markets.map((market) => market.volume24hUsd)),
+    volumeTotalUsd: toNumber(rawEvent.volume) ?? sumValues(markets.map((market) => market.volumeTotalUsd)),
+    marketCount: markets.length,
+    updatedAt: normalizeTimestamp(rawEvent.updatedAt) ?? latestTimestamp(markets.map((market) => market.updatedAt)),
+    markets,
+  };
+
+  return {
+    item,
+    eventRank,
+    relevanceScore:
+      toNumber(rawEvent.score) ??
+      marketCandidates.reduce<number | null>((currentBest, candidate) => {
+        if (candidate.relevanceScore === null) {
+          return currentBest;
+        }
+
+        if (currentBest === null || candidate.relevanceScore > currentBest) {
+          return candidate.relevanceScore;
+        }
+
+        return currentBest;
+      }, null),
+  };
+}
+
+function compareEventCandidates(a: SearchEventCandidate, b: SearchEventCandidate) {
+  const scoreComparison = compareNullableNumberDesc(a.relevanceScore, b.relevanceScore);
+  if (scoreComparison !== 0) {
+    return scoreComparison;
+  }
+
+  const volumeComparison = compareNullableNumberDesc(a.item.volumeTotalUsd ?? a.item.volume24hUsd, b.item.volumeTotalUsd ?? b.item.volume24hUsd);
+  if (volumeComparison !== 0) {
+    return volumeComparison;
+  }
+
+  if (a.item.marketCount !== b.item.marketCount) {
+    return b.item.marketCount - a.item.marketCount;
+  }
+
+  if (a.eventRank !== b.eventRank) {
+    return a.eventRank - b.eventRank;
+  }
+
+  return a.item.title.localeCompare(b.item.title);
+}
+
+export function normalizeWatchlistEvents(rawSearchResponse: unknown): WatchlistEventItem[] {
+  const searchResponse = gammaPublicSearchResponseSchema.parse(rawSearchResponse);
+  const eventCandidates = (searchResponse.events ?? [])
+    .map((event, eventRank) => normalizeWatchlistEvent(event, eventRank))
+    .filter((candidate): candidate is SearchEventCandidate => candidate !== null)
+    .sort(compareEventCandidates);
+
+  const seenMarketIds = new Set<string>();
+  const normalizedEvents: WatchlistEventItem[] = [];
+
+  for (const candidate of eventCandidates) {
+    const uniqueMarkets = candidate.item.markets.filter((market) => {
+      if (seenMarketIds.has(market.id)) {
+        return false;
+      }
+
+      seenMarketIds.add(market.id);
+      return true;
+    });
+
+    if (uniqueMarkets.length === 0) {
+      continue;
+    }
+
+    normalizedEvents.push({
+      ...candidate.item,
+      marketCount: uniqueMarkets.length,
+      volume24hUsd: sumValues(uniqueMarkets.map((market) => market.volume24hUsd)) ?? candidate.item.volume24hUsd,
+      volumeTotalUsd: sumValues(uniqueMarkets.map((market) => market.volumeTotalUsd)) ?? candidate.item.volumeTotalUsd,
+      updatedAt: latestTimestamp(uniqueMarkets.map((market) => market.updatedAt)) ?? candidate.item.updatedAt,
+      markets: uniqueMarkets,
+    });
+  }
+
+  return normalizedEvents;
 }

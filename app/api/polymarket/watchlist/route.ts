@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { fetchPublicSearch, UpstreamHttpError } from "@/lib/polymarket/client";
 import { WatchlistResponse } from "@/lib/polymarket/types";
-import { normalizeWatchlistMarkets } from "@/lib/polymarket/watchlist";
+import { normalizeWatchlistEvents } from "@/lib/polymarket/watchlist";
 import { generateWatchlistSummary } from "@/lib/watchlist/summary";
 
 const querySchema = z.object({
@@ -46,10 +46,10 @@ export async function GET(request: NextRequest) {
       noStore: refresh === "1",
     });
 
-    const items = normalizeWatchlistMarkets(rawSearchResponse).slice(0, limit);
+    const events = normalizeWatchlistEvents(rawSearchResponse).slice(0, limit);
     const summary = await generateWatchlistSummary({
       query: q,
-      items,
+      events,
     });
 
     const response: WatchlistResponse = {
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       fetchedAt: new Date().toISOString(),
       summary: summary.text,
       summaryStatus: summary.status,
-      items,
+      events,
     };
 
     return withCacheHeaders(NextResponse.json(response));

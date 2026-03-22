@@ -17,7 +17,7 @@ describe("GET /api/polymarket/watchlist", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns normalized ranked watchlist data with a summary", async () => {
+  it("returns grouped event data with nested active markets and a summary", async () => {
     vi.stubEnv("OPENAI_API_KEY", "test-key");
 
     fetchMock.mockImplementation(async (input) => {
@@ -140,14 +140,18 @@ describe("GET /api/polymarket/watchlist", () => {
     expect(json.query).toBe("Iran");
     expect(json.summaryStatus).toBe("ready");
     expect(json.summary).toContain("market narrative");
-    expect(json.items).toHaveLength(3);
-    expect(json.items[0].id).toBe("m-high");
-    expect(json.items[0].title).toBe("Will Iran talks restart in 2026?");
-    expect(json.items[1].id).toBe("m-fallback");
-    expect(json.items[1].yesPrice).toBe(0.44);
-    expect(json.items[1].noPrice).toBe(0.56);
-    expect(json.items[1].lastTradePrice).toBe(0.44);
-    expect(json.items[2].id).toBe("m-dup");
+    expect(json.events).toHaveLength(2);
+    expect(json.events[0].id).toBe("event-1");
+    expect(json.events[0].marketCount).toBe(2);
+    expect(json.events[0].markets).toHaveLength(2);
+    expect(json.events[0].markets[0].id).toBe("m-high");
+    expect(json.events[0].markets[1].id).toBe("m-fallback");
+    expect(json.events[0].markets[1].yesPrice).toBe(0.44);
+    expect(json.events[0].markets[1].noPrice).toBe(0.56);
+    expect(json.events[0].markets[1].lastTradePrice).toBe(0.44);
+    expect(json.events[1].id).toBe("event-2");
+    expect(json.events[1].marketCount).toBe(1);
+    expect(json.events[1].markets[0].id).toBe("m-dup");
   });
 
   it("returns results when the OpenAI summary request fails", async () => {
@@ -198,7 +202,8 @@ describe("GET /api/polymarket/watchlist", () => {
     expect(response.status).toBe(200);
     expect(json.summary).toBeNull();
     expect(json.summaryStatus).toBe("unavailable");
-    expect(json.items).toHaveLength(1);
+    expect(json.events).toHaveLength(1);
+    expect(json.events[0].markets).toHaveLength(1);
   });
 
   it("returns an empty payload when no active markets match", async () => {
@@ -218,7 +223,7 @@ describe("GET /api/polymarket/watchlist", () => {
     const json = await response.json();
 
     expect(response.status).toBe(200);
-    expect(json.items).toEqual([]);
+    expect(json.events).toEqual([]);
     expect(json.summary).toBeNull();
     expect(json.summaryStatus).toBe("unavailable");
     expect(fetchMock).toHaveBeenCalledTimes(1);

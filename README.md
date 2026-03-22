@@ -135,7 +135,7 @@ The route returns a normalized payload with:
 - `fetchedAt`
 - `summary`
 - `summaryStatus=ready|unavailable`
-- `items[]` containing title, Yes/No pricing, last trade price, status, volume, and Polymarket URL
+- `events[]` containing grouped event results, each with event metadata plus nested market pricing and Polymarket links
 
 ## Notebook Parity Map
 

@@ -54,7 +54,7 @@ describe("WatchlistPageClient", () => {
 
     expect(screen.getByText("Saved searches")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Iran" })).toBeInTheDocument();
-    expect(screen.queryByText("No markets found")).not.toBeInTheDocument();
+    expect(screen.queryByText("No events found")).not.toBeInTheDocument();
   });
 
   it("submits a typed query and renders the summary above results", () => {
@@ -69,18 +69,30 @@ describe("WatchlistPageClient", () => {
                   summary:
                     "Markets imply investors still see a live policy storyline here, but not one with total conviction. The pricing mix suggests expectations are meaningful yet still contested.",
                   summaryStatus: "ready",
-                  items: [
+                  events: [
                     {
-                      id: "m-1",
-                      title: "Will Iran talks restart in 2026?",
-                      yesPrice: 0.61,
-                      noPrice: 0.39,
-                      lastTradePrice: 0.61,
+                      id: "event-1",
+                      title: "Iran Diplomatic Outlook",
+                      url: "https://polymarket.com/event/iran-diplomatic-outlook",
+                      status: "active",
                       volume24hUsd: 120000,
                       volumeTotalUsd: 500000,
-                      url: "https://polymarket.com/market/iran-talks",
-                      status: "active",
+                      marketCount: 1,
                       updatedAt: "2026-03-22T00:00:00.000Z",
+                      markets: [
+                        {
+                          id: "m-1",
+                          title: "Will Iran talks restart in 2026?",
+                          yesPrice: 0.61,
+                          noPrice: 0.39,
+                          lastTradePrice: 0.61,
+                          volume24hUsd: 120000,
+                          volumeTotalUsd: 500000,
+                          url: "https://polymarket.com/market/iran-talks",
+                          status: "active",
+                          updatedAt: "2026-03-22T00:00:00.000Z",
+                        },
+                      ],
                     },
                   ],
                 },
@@ -98,6 +110,7 @@ describe("WatchlistPageClient", () => {
     const calls = vi.mocked(useWatchlist).mock.calls;
     expect(calls[calls.length - 1]?.[0]).toEqual({ query: "Iran", limit: 12 });
     expect(screen.getByText("AI Summary")).toBeInTheDocument();
+    expect(screen.getByText("Iran Diplomatic Outlook")).toBeInTheDocument();
     expect(screen.getByText("Will Iran talks restart in 2026?")).toBeInTheDocument();
   });
 
@@ -134,18 +147,30 @@ describe("WatchlistPageClient", () => {
                   fetchedAt: "2026-03-22T00:00:00.000Z",
                   summary: null,
                   summaryStatus: "unavailable",
-                  items: [
+                  events: [
                     {
-                      id: "m-1",
-                      title: "Will the Fed cut rates by June?",
-                      yesPrice: 0.52,
-                      noPrice: 0.48,
-                      lastTradePrice: 0.52,
+                      id: "event-1",
+                      title: "Fed Rate Decision",
+                      url: "https://polymarket.com/event/fed-rate-decision",
+                      status: "active",
                       volume24hUsd: 95000,
                       volumeTotalUsd: 310000,
-                      url: "https://polymarket.com/market/fed-cut-rates",
-                      status: "active",
+                      marketCount: 1,
                       updatedAt: "2026-03-22T00:00:00.000Z",
+                      markets: [
+                        {
+                          id: "m-1",
+                          title: "Will the Fed cut rates by June?",
+                          yesPrice: 0.52,
+                          noPrice: 0.48,
+                          lastTradePrice: 0.52,
+                          volume24hUsd: 95000,
+                          volumeTotalUsd: 310000,
+                          url: "https://polymarket.com/market/fed-cut-rates",
+                          status: "active",
+                          updatedAt: "2026-03-22T00:00:00.000Z",
+                        },
+                      ],
                     },
                   ],
                 },
@@ -160,6 +185,7 @@ describe("WatchlistPageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Fed" }));
 
     expect(screen.getByText("AI summary unavailable right now")).toBeInTheDocument();
+    expect(screen.getByText("Fed Rate Decision")).toBeInTheDocument();
     expect(screen.getByText("Will the Fed cut rates by June?")).toBeInTheDocument();
   });
 
@@ -174,7 +200,7 @@ describe("WatchlistPageClient", () => {
                   fetchedAt: "2026-03-22T00:00:00.000Z",
                   summary: null,
                   summaryStatus: "unavailable",
-                  items: [],
+                  events: [],
                 },
               }
             : {},
@@ -186,7 +212,7 @@ describe("WatchlistPageClient", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Largest Company" }));
 
-    expect(screen.getByText("No markets found")).toBeInTheDocument();
+    expect(screen.getByText("No events found")).toBeInTheDocument();
     expect(screen.getAllByText(/Largest Company/).length).toBeGreaterThan(0);
   });
 });

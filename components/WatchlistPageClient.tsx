@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatProbability, formatRelativeUpdatedAt, formatUsd } from "@/lib/format";
-import { WatchlistMarketItem } from "@/lib/polymarket/types";
+import { WatchlistEventItem, WatchlistMarketItem } from "@/lib/polymarket/types";
 import { useWatchlist } from "@/lib/query/useWatchlist";
 import { cn } from "@/lib/utils";
 
@@ -55,13 +55,20 @@ function WatchlistLoadingState() {
                 <div className="min-w-0 flex-1 space-y-2">
                   <Skeleton className="h-4 w-12" />
                   <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-4 w-40" />
                 </div>
                 <Skeleton className="h-10 w-24" />
               </div>
-              <div className="flex flex-wrap gap-2">
-                <Skeleton className="h-10 w-28 rounded-full" />
-                <Skeleton className="h-10 w-28 rounded-full" />
-                <Skeleton className="h-10 w-32 rounded-full" />
+              <div className="space-y-3">
+                {Array.from({ length: 3 }).map((_, marketIndex) => (
+                  <div key={marketIndex} className="rounded-2xl border border-slate-200 p-4">
+                    <Skeleton className="h-5 w-5/6" />
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Skeleton className="h-10 w-28 rounded-full" />
+                      <Skeleton className="h-10 w-28 rounded-full" />
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -75,10 +82,10 @@ function WatchlistEmptyResults({ query }: { query: string }) {
   return (
     <Card>
       <CardContent className="p-6">
-        <h2 className="text-base font-semibold text-slate-900">No markets found</h2>
+        <h2 className="text-base font-semibold text-slate-900">No events found</h2>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
-          No active Polymarket markets matched <span className="font-medium text-slate-900">&quot;{query}&quot;</span>. Try a broader topic
-          or one of the saved searches above.
+          No active Polymarket events matched <span className="font-medium text-slate-900">&quot;{query}&quot;</span>. Try a broader topic or
+          one of the saved searches above.
         </p>
       </CardContent>
     </Card>
@@ -126,34 +133,74 @@ function ProbabilityCluster({ item }: { item: WatchlistMarketItem }) {
   return <div className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">Price unavailable</div>;
 }
 
-function WatchlistResultCard({ item, index }: { item: WatchlistMarketItem; index: number }) {
+function WatchlistMarketRow({ item }: { item: WatchlistMarketItem }) {
+  return (
+    <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          <h4 className="text-base font-semibold tracking-tight text-slate-900">{item.title}</h4>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <ProbabilityCluster item={item} />
+            <div className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+              <span className="mr-2 text-xs uppercase tracking-wide text-slate-500">24h Volume</span>
+              <span className="font-semibold">{formatUsd(item.volume24hUsd)}</span>
+            </div>
+          </div>
+        </div>
+
+        {item.url ? (
+          <Link
+            href={item.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-950"
+          >
+            Open market
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function WatchlistEventCard({ event, index }: { event: WatchlistEventItem; index: number }) {
   return (
     <Card>
-      <CardContent className="p-5">
+      <CardContent className="space-y-4 p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-500">#{index + 1}</p>
-            <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-900">{item.title}</h3>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <ProbabilityCluster item={item} />
+            <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-900">{event.title}</h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <div className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                <span className="mr-2 text-xs uppercase tracking-wide text-slate-500">Markets</span>
+                <span className="font-semibold">{event.marketCount}</span>
+              </div>
               <div className="rounded-full border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
                 <span className="mr-2 text-xs uppercase tracking-wide text-slate-500">24h Volume</span>
-                <span className="font-semibold">{formatUsd(item.volume24hUsd)}</span>
+                <span className="font-semibold">{formatUsd(event.volume24hUsd)}</span>
               </div>
             </div>
           </div>
 
-          {item.url ? (
+          {event.url ? (
             <Link
-              href={item.url}
+              href={event.url}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-950"
             >
-              Open on Polymarket
+              Open event
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           ) : null}
+        </div>
+
+        <div className="grid gap-3">
+          {event.markets.map((market) => (
+            <WatchlistMarketRow key={market.id} item={market} />
+          ))}
         </div>
       </CardContent>
     </Card>
@@ -302,7 +349,7 @@ export function WatchlistPageClient() {
           transition={{ duration: 0.25, ease: "easeOut" }}
           className="space-y-4"
         >
-          {query.data.items.length > 0 && query.data.summary ? (
+          {query.data.events.length > 0 && query.data.summary ? (
             <Card className="border-slate-900/10 bg-slate-950 text-white shadow-lg shadow-slate-900/5">
               <CardContent className="p-5 sm:p-6">
                 <div className="flex items-start gap-3">
@@ -316,7 +363,7 @@ export function WatchlistPageClient() {
             </Card>
           ) : null}
 
-          {query.data.items.length > 0 && query.data.summaryStatus === "unavailable" ? (
+          {query.data.events.length > 0 && query.data.summaryStatus === "unavailable" ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900 shadow-sm">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="mt-0.5 h-5 w-5" />
@@ -328,12 +375,12 @@ export function WatchlistPageClient() {
             </div>
           ) : null}
 
-          {query.data.items.length === 0 ? (
+          {query.data.events.length === 0 ? (
             <WatchlistEmptyResults query={activeQuery} />
           ) : (
             <div className="grid gap-3">
-              {query.data.items.map((item, index) => (
-                <WatchlistResultCard key={item.id} item={item} index={index} />
+              {query.data.events.map((event, index) => (
+                <WatchlistEventCard key={event.id} event={event} index={index} />
               ))}
             </div>
           )}

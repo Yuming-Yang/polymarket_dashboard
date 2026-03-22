@@ -1,6 +1,6 @@
 import "server-only";
 
-import { WatchlistMarketItem, WatchlistSummaryStatus } from "@/lib/polymarket/types";
+import { WatchlistEventItem, WatchlistSummaryStatus } from "@/lib/polymarket/types";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5-mini";
@@ -11,17 +11,23 @@ type WatchlistSummaryResult = {
   status: WatchlistSummaryStatus;
 };
 
-function buildSnapshot(items: WatchlistMarketItem[]) {
-  return items
-    .filter((item) => item.yesPrice !== null || item.noPrice !== null || item.lastTradePrice !== null)
-    .slice(0, 10)
-    .map((item) => ({
-      title: item.title,
-      yesPrice: item.yesPrice,
-      noPrice: item.noPrice,
-      lastTradePrice: item.lastTradePrice,
-      volume24hUsd: item.volume24hUsd,
-      volumeTotalUsd: item.volumeTotalUsd,
+function buildSnapshot(events: WatchlistEventItem[]) {
+  return events
+    .filter((event) => event.markets.some((market) => market.yesPrice !== null || market.noPrice !== null || market.lastTradePrice !== null))
+    .slice(0, 8)
+    .map((event) => ({
+      eventTitle: event.title,
+      volume24hUsd: event.volume24hUsd,
+      volumeTotalUsd: event.volumeTotalUsd,
+      marketCount: event.marketCount,
+      markets: event.markets.slice(0, 10).map((market) => ({
+        title: market.title,
+        yesPrice: market.yesPrice,
+        noPrice: market.noPrice,
+        lastTradePrice: market.lastTradePrice,
+        volume24hUsd: market.volume24hUsd,
+        volumeTotalUsd: market.volumeTotalUsd,
+      })),
     }));
 }
 
@@ -66,10 +72,10 @@ function extractResponseText(value: unknown): string | null {
 
 export async function generateWatchlistSummary(params: {
   query: string;
-  items: WatchlistMarketItem[];
+  events: WatchlistEventItem[];
 }): Promise<WatchlistSummaryResult> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  const snapshot = buildSnapshot(params.items);
+  const snapshot = buildSnapshot(params.events);
 
   if (!apiKey || snapshot.length === 0) {
     return {
