@@ -37,6 +37,12 @@ export default function HomePage() {
           >
             Insider
           </Link>
+          <Link
+            href="/links"
+            className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-900"
+          >
+            Links
+          </Link>
         </div>
       </div>
     </main>
