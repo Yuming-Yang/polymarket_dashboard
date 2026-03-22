@@ -4,15 +4,31 @@ import {
   PriceHitDistributionBucket,
   PriceHitExpiryDistribution,
   PriceHitMarketItem,
+  PriceHitMarketSide,
   PriceHitStructuredEvent,
 } from "@/lib/polymarket/types";
 
 export const MIN_PRICE_HIT_TOTAL_VOLUME_USD = 5_000;
 export const MIN_PRICE_HIT_24H_VOLUME_USD = 1_000;
+const MIN_REASONABLE_FALLBACK_STRIKE = 10;
+const EXCLUDED_MARKET_PATTERN =
+  /\b(above|below|settle|settles|settlement|close above|close below|closing above|closing below|between|range|band|finish above|finish below)\b/i;
+const LOW_SIDE_PATTERN = /\b(dip to|hit\s*\(?low\)?|fall to|falls to|drop to|drops to|low\))\b/i;
+const HIGH_SIDE_PATTERN = /\b(reach|reaches|touch|touches|hit\s*\(?high\)?|high\)|hit)\b/i;
 
 export type PriceHitNormalizedMarket = PriceHitMarketItem & {
   expiryDate: string;
   liquidityScore: number;
+};
+
+type PriceHitNormalizedEvent = {
+  eventId: string;
+  eventTitle: string;
+  expiryDate: string;
+  markets: PriceHitNormalizedMarket[];
+  totalLiquidity: number;
+  lowStrikeCount: number;
+  highStrikeCount: number;
 };
 
 function toNumber(value: unknown): number | null {
@@ -169,26 +185,42 @@ function clampProbability(value: number) {
   return Math.min(1, Math.max(0, value));
 }
 
+function parseStrikeMatch(baseValue: string, suffixValue?: string) {
+  const base = Number(baseValue.replace(/,/g, ""));
+  if (!Number.isFinite(base) || base <= 0) {
+    return null;
+  }
+
+  const suffix = suffixValue?.toLowerCase();
+  const multiplier =
+    suffix === "k" ? 1_000 : suffix === "m" ? 1_000_000 : suffix === "b" ? 1_000_000_000 : 1;
+
+  return base * multiplier;
+}
+
 function parseStrikeFromText(value: string | null) {
   if (!value) {
     return null;
   }
 
-  const match = value.match(/\$?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d+)?|[0-9]+(?:\.\d+)?)([kKmMbB]?)/);
-  if (!match) {
-    return null;
+  const currencyMatch = value.match(/\$\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d+)?|[0-9]+(?:\.\d+)?)([kKmMbB]?)/);
+  if (currencyMatch) {
+    return parseStrikeMatch(currencyMatch[1]!, currencyMatch[2]);
   }
 
-  const base = Number(match[1].replace(/,/g, ""));
-  if (!Number.isFinite(base) || base <= 0) {
-    return null;
+  const contextualMatch = value.match(
+    /\b(?:reach|reaches|touch|touches|hit(?:\s*\((?:high|low)\))?|dip to|fall to|falls to|drop to|drops to)\s*\$?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d+)?|[0-9]+(?:\.\d+)?)([kKmMbB]?)/i,
+  );
+  if (contextualMatch) {
+    return parseStrikeMatch(contextualMatch[1]!, contextualMatch[2]);
   }
 
-  const suffix = match[2]?.toLowerCase();
-  const multiplier =
-    suffix === "k" ? 1_000 : suffix === "m" ? 1_000_000 : suffix === "b" ? 1_000_000_000 : 1;
+  const leadingPriceMatch = value.match(/^[^\d$]*\$?\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.\d+)?|[0-9]+(?:\.\d+)?)([kKmMbB]?)/);
+  if (leadingPriceMatch) {
+    return parseStrikeMatch(leadingPriceMatch[1]!, leadingPriceMatch[2]);
+  }
 
-  return base * multiplier;
+  return null;
 }
 
 function stableId(value: unknown, fallback: string) {
@@ -247,93 +279,43 @@ function formatPriceLabel(value: number) {
   }).format(value);
 }
 
-function buildBuckets(strikePrices: number[], repairedSurvival: number[]) {
-  const representativeGap = getRepresentativeGap(strikePrices);
-  const firstStrike = strikePrices[0]!;
-  const lastStrike = strikePrices[strikePrices.length - 1]!;
-  const chartMinPrice = Math.max(0, firstStrike - representativeGap);
-  const chartMaxPrice = lastStrike + representativeGap;
-  const buckets: PriceHitDistributionBucket[] = [];
+function buildBucket(
+  key: string,
+  kind: PriceHitDistributionBucket["kind"],
+  startPrice: number,
+  endPrice: number,
+  probabilityDensity: number,
+  label: string,
+): PriceHitDistributionBucket | null {
+  const safeStart = Math.min(startPrice, endPrice);
+  const safeEnd = Math.max(startPrice, endPrice);
 
-  buckets.push({
-    key: `lower-${firstStrike}`,
-    kind: "lower",
-    centerPrice: Math.max(0, firstStrike - representativeGap / 2),
-    probabilityDensity: clampProbability(1 - repairedSurvival[0]!),
-    label: `< ${formatPriceLabel(firstStrike)}`,
-  });
-
-  for (let index = 0; index < strikePrices.length - 1; index += 1) {
-    const currentStrike = strikePrices[index]!;
-    const nextStrike = strikePrices[index + 1]!;
-    buckets.push({
-      key: `interior-${currentStrike}-${nextStrike}`,
-      kind: "interior",
-      centerPrice: (currentStrike + nextStrike) / 2,
-      probabilityDensity: clampProbability(repairedSurvival[index]! - repairedSurvival[index + 1]!),
-      label: `${formatPriceLabel(currentStrike)} - ${formatPriceLabel(nextStrike)}`,
-    });
-  }
-
-  buckets.push({
-    key: `upper-${lastStrike}`,
-    kind: "upper",
-    centerPrice: lastStrike + representativeGap / 2,
-    probabilityDensity: clampProbability(repairedSurvival[repairedSurvival.length - 1]!),
-    label: `>= ${formatPriceLabel(lastStrike)}`,
-  });
-
-  return {
-    buckets,
-    chartMinPrice,
-    chartMaxPrice,
-  };
-}
-
-function interpolateSurvivalQuantile(strikePrices: number[], repairedSurvival: number[], quantile: number) {
-  if (strikePrices.length < 2) {
+  if (!Number.isFinite(safeStart) || !Number.isFinite(safeEnd) || safeEnd <= safeStart) {
     return null;
   }
 
-  const representativeGap = getRepresentativeGap(strikePrices);
-  const chartMinPrice = Math.max(0, strikePrices[0]! - representativeGap);
-  const chartMaxPrice = strikePrices[strikePrices.length - 1]! + representativeGap;
-  const xValues = [chartMinPrice, ...strikePrices, chartMaxPrice];
-  const yValues = [1, ...repairedSurvival, 0];
-  const targetSurvival = clampProbability(1 - quantile);
-
-  for (let index = 0; index < xValues.length - 1; index += 1) {
-    const x0 = xValues[index]!;
-    const x1 = xValues[index + 1]!;
-    const y0 = yValues[index]!;
-    const y1 = yValues[index + 1]!;
-
-    if (targetSurvival > y0 || targetSurvival < y1) {
-      continue;
-    }
-
-    if (y0 === y1) {
-      return x1;
-    }
-
-    const ratio = (y0 - targetSurvival) / (y0 - y1);
-    return x0 + ratio * (x1 - x0);
-  }
-
-  return quantile <= 0.5 ? chartMinPrice : chartMaxPrice;
+  return {
+    key,
+    kind,
+    startPrice: safeStart,
+    endPrice: safeEnd,
+    centerPrice: (safeStart + safeEnd) / 2,
+    probabilityDensity: clampProbability(probabilityDensity),
+    label,
+  };
 }
 
-export function extractStrikePrice(rawMarket: GammaMarketRaw) {
-  const threshold = toNumber(rawMarket.groupItemThreshold);
-  if (threshold !== null && threshold > 0) {
-    return threshold;
+function normalizeBucketMasses(buckets: PriceHitDistributionBucket[]) {
+  const totalMass = buckets.reduce((sum, bucket) => sum + bucket.probabilityDensity, 0);
+
+  if (totalMass <= 0) {
+    return buckets;
   }
 
-  return (
-    parseStrikeFromText(toString(rawMarket.groupItemTitle)) ??
-    parseStrikeFromText(toString(rawMarket.question)) ??
-    parseStrikeFromText(toString(rawMarket.title))
-  );
+  return buckets.map((bucket) => ({
+    ...bucket,
+    probabilityDensity: clampProbability(bucket.probabilityDensity / totalMass),
+  }));
 }
 
 export function repairPriceHitSurvivalProbabilities(probabilities: number[]) {
@@ -349,6 +331,66 @@ export function repairPriceHitSurvivalProbabilities(probabilities: number[]) {
   }, []);
 }
 
+export function repairPriceHitCdfProbabilities(probabilities: number[]) {
+  return probabilities.reduce<number[]>((result, probability, index) => {
+    const clamped = clampProbability(probability);
+    if (index === 0) {
+      result.push(clamped);
+      return result;
+    }
+
+    result.push(Math.max(result[index - 1]!, clamped));
+    return result;
+  }, []);
+}
+
+function normalizeMarketDescriptor(rawMarket: GammaMarketRaw) {
+  return [toString(rawMarket.question), toString(rawMarket.title), toString(rawMarket.groupItemTitle)]
+    .filter((value): value is string => Boolean(value))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function classifyPriceHitMarketSide(rawMarket: GammaMarketRaw): PriceHitMarketSide | null {
+  const descriptor = normalizeMarketDescriptor(rawMarket);
+  if (!descriptor) {
+    return null;
+  }
+
+  if (EXCLUDED_MARKET_PATTERN.test(descriptor)) {
+    return null;
+  }
+
+  if (descriptor.includes("↓") || LOW_SIDE_PATTERN.test(descriptor)) {
+    return "low";
+  }
+
+  if (descriptor.includes("↑") || HIGH_SIDE_PATTERN.test(descriptor)) {
+    return "high";
+  }
+
+  return null;
+}
+
+export function extractStrikePrice(rawMarket: GammaMarketRaw) {
+  const textStrike =
+    parseStrikeFromText(toString(rawMarket.question)) ??
+    parseStrikeFromText(toString(rawMarket.title)) ??
+    parseStrikeFromText(toString(rawMarket.groupItemTitle));
+
+  if (textStrike !== null) {
+    return textStrike;
+  }
+
+  const threshold = toNumber(rawMarket.groupItemThreshold);
+  if (threshold !== null && threshold >= MIN_REASONABLE_FALLBACK_STRIKE) {
+    return threshold;
+  }
+
+  return null;
+}
+
 export function normalizePriceHitMarketsForEvent(rawEvent: GammaEventRaw, structuredEvent: PriceHitStructuredEvent) {
   return (rawEvent.markets ?? []).reduce<PriceHitNormalizedMarket[]>((result, rawMarket, index) => {
     const outputs = parseStringArray(rawMarket.outcomes);
@@ -362,6 +404,7 @@ export function normalizePriceHitMarketsForEvent(rawEvent: GammaEventRaw, struct
       return result;
     }
 
+    const side = classifyPriceHitMarketSide(rawMarket);
     const strikePrice = extractStrikePrice(rawMarket);
     const probability = normalizeYesProbability(rawMarket);
     const expiryDate = normalizeDateOnly(rawMarket.endDate) ?? structuredEvent.expiryDate;
@@ -369,6 +412,7 @@ export function normalizePriceHitMarketsForEvent(rawEvent: GammaEventRaw, struct
     const volumeTotalUsd = toNumber(rawMarket.volumeNum) ?? toNumber(rawMarket.volume);
 
     if (
+      side === null ||
       strikePrice === null ||
       probability === null ||
       !expiryDate ||
@@ -382,6 +426,7 @@ export function normalizePriceHitMarketsForEvent(rawEvent: GammaEventRaw, struct
       eventId: structuredEvent.eventId,
       eventTitle: structuredEvent.eventTitle,
       title: toString(rawMarket.question) ?? toString(rawMarket.title) ?? `Strike ${strikePrice}`,
+      side,
       strikePrice,
       probability: clampProbability(probability),
       volume24hUsd,
@@ -396,53 +441,221 @@ export function normalizePriceHitMarketsForEvent(rawEvent: GammaEventRaw, struct
   }, []);
 }
 
-export function buildPriceHitExpiryDistributions(markets: PriceHitNormalizedMarket[]): PriceHitExpiryDistribution[] {
-  const groupedByExpiry = new Map<string, Map<number, PriceHitNormalizedMarket>>();
-
-  for (const market of markets) {
-    const marketsByStrike = groupedByExpiry.get(market.expiryDate) ?? new Map<number, PriceHitNormalizedMarket>();
-    const current = marketsByStrike.get(market.strikePrice);
-
-    if (!current || compareLiquidity(market, current) < 0) {
-      marketsByStrike.set(market.strikePrice, market);
-    }
-
-    groupedByExpiry.set(market.expiryDate, marketsByStrike);
+function compareMarketsByStrikeAndSide(a: PriceHitNormalizedMarket, b: PriceHitNormalizedMarket) {
+  if (a.strikePrice !== b.strikePrice) {
+    return a.strikePrice - b.strikePrice;
   }
 
-  return Array.from(groupedByExpiry.entries())
-    .map(([expiryDate, uniqueMarkets]) => {
-      const sortedMarkets = Array.from(uniqueMarkets.values()).sort((a, b) => {
-        if (a.strikePrice !== b.strikePrice) {
-          return a.strikePrice - b.strikePrice;
-        }
+  if (a.side !== b.side) {
+    return a.side === "low" ? -1 : 1;
+  }
 
-        return compareLiquidity(a, b);
-      });
+  return compareLiquidity(a, b);
+}
 
-      if (sortedMarkets.length < 2) {
+function compareEventStrength(a: PriceHitNormalizedEvent, b: PriceHitNormalizedEvent) {
+  const balancedStrikeCountComparison = Math.min(b.lowStrikeCount, b.highStrikeCount) - Math.min(a.lowStrikeCount, a.highStrikeCount);
+  if (balancedStrikeCountComparison !== 0) {
+    return balancedStrikeCountComparison;
+  }
+
+  if (b.markets.length !== a.markets.length) {
+    return b.markets.length - a.markets.length;
+  }
+
+  if (b.totalLiquidity !== a.totalLiquidity) {
+    return b.totalLiquidity - a.totalLiquidity;
+  }
+
+  return a.eventId.localeCompare(b.eventId);
+}
+
+function buildSelectedEvents(markets: PriceHitNormalizedMarket[]) {
+  const eventsByKey = new Map<string, Map<string, PriceHitNormalizedMarket>>();
+
+  for (const market of markets) {
+    const eventKey = `${market.expiryDate}::${market.eventId}`;
+    const marketsByStrike = eventsByKey.get(eventKey) ?? new Map<string, PriceHitNormalizedMarket>();
+    const current = marketsByStrike.get(`${market.side}:${market.strikePrice}`);
+
+    if (!current || compareLiquidity(market, current) < 0) {
+      marketsByStrike.set(`${market.side}:${market.strikePrice}`, market);
+    }
+
+    eventsByKey.set(eventKey, marketsByStrike);
+  }
+
+  const groupedByExpiry = new Map<string, PriceHitNormalizedEvent[]>();
+
+  for (const [eventKey, uniqueMarkets] of eventsByKey.entries()) {
+    const [expiryDate] = eventKey.split("::");
+    const sortedMarkets = Array.from(uniqueMarkets.values()).sort(compareMarketsByStrikeAndSide);
+    const lowStrikeCount = sortedMarkets.filter((market) => market.side === "low").length;
+    const highStrikeCount = sortedMarkets.filter((market) => market.side === "high").length;
+
+    if (lowStrikeCount === 0 || highStrikeCount === 0 || sortedMarkets.length < 2) {
+      continue;
+    }
+
+    const candidate: PriceHitNormalizedEvent = {
+      eventId: sortedMarkets[0]!.eventId,
+      eventTitle: sortedMarkets[0]!.eventTitle,
+      expiryDate,
+      markets: sortedMarkets,
+      totalLiquidity: sortedMarkets.reduce((sum, market) => sum + market.liquidityScore, 0),
+      lowStrikeCount,
+      highStrikeCount,
+    };
+
+    const candidates = groupedByExpiry.get(expiryDate) ?? [];
+    candidates.push(candidate);
+    groupedByExpiry.set(expiryDate, candidates);
+  }
+
+  return Array.from(groupedByExpiry.entries()).map(([expiryDate, candidates]) => ({
+    expiryDate,
+    event: [...candidates].sort(compareEventStrength)[0]!,
+  }));
+}
+
+function buildDistributionBuckets(markets: PriceHitNormalizedMarket[]) {
+  const lowMarkets = markets.filter((market) => market.side === "low").sort((a, b) => a.strikePrice - b.strikePrice);
+  const highMarkets = markets.filter((market) => market.side === "high").sort((a, b) => a.strikePrice - b.strikePrice);
+
+  if (lowMarkets.length === 0 || highMarkets.length === 0) {
+    return null;
+  }
+
+  const lowStrikes = lowMarkets.map((market) => market.strikePrice);
+  const highStrikes = highMarkets.map((market) => market.strikePrice);
+  const lowGap = getRepresentativeGap(lowStrikes);
+  const highGap = getRepresentativeGap(highStrikes);
+  const chartMinPrice = Math.max(0, lowStrikes[0]! - lowGap);
+  const chartMaxPrice = highStrikes[highStrikes.length - 1]! + highGap;
+  const repairedLow = repairPriceHitCdfProbabilities(lowMarkets.map((market) => market.probability));
+  const repairedHigh = repairPriceHitSurvivalProbabilities(highMarkets.map((market) => market.probability));
+  const buckets: PriceHitDistributionBucket[] = [];
+
+  for (let index = 0; index < lowStrikes.length; index += 1) {
+    const strikePrice = lowStrikes[index]!;
+    const previousStrike = index === 0 ? chartMinPrice : lowStrikes[index - 1]!;
+    const previousProbability = index === 0 ? 0 : repairedLow[index - 1]!;
+    const bucket = buildBucket(
+      `low-${index}-${strikePrice}`,
+      "lower",
+      previousStrike,
+      strikePrice,
+      repairedLow[index]! - previousProbability,
+      index === 0 ? `< ${formatPriceLabel(strikePrice)}` : `${formatPriceLabel(previousStrike)} - ${formatPriceLabel(strikePrice)}`,
+    );
+
+    if (bucket) {
+      buckets.push(bucket);
+    }
+  }
+
+  const centerStart = lowStrikes[lowStrikes.length - 1]!;
+  const centerEnd = highStrikes[0]!;
+  const centerBucket = buildBucket(
+    `center-${centerStart}-${centerEnd}`,
+    "interior",
+    centerStart,
+    centerEnd,
+    1 - repairedLow[repairedLow.length - 1]! - repairedHigh[0]!,
+    `${formatPriceLabel(centerStart)} - ${formatPriceLabel(centerEnd)}`,
+  );
+
+  if (centerBucket) {
+    buckets.push(centerBucket);
+  }
+
+  for (let index = 0; index < highStrikes.length; index += 1) {
+    const strikePrice = highStrikes[index]!;
+    const nextStrike = index === highStrikes.length - 1 ? chartMaxPrice : highStrikes[index + 1]!;
+    const nextProbability = index === highStrikes.length - 1 ? 0 : repairedHigh[index + 1]!;
+    const bucket = buildBucket(
+      `high-${index}-${strikePrice}`,
+      "upper",
+      strikePrice,
+      nextStrike,
+      repairedHigh[index]! - nextProbability,
+      index === highStrikes.length - 1
+        ? `>= ${formatPriceLabel(strikePrice)}`
+        : `${formatPriceLabel(strikePrice)} - ${formatPriceLabel(nextStrike)}`,
+    );
+
+    if (bucket) {
+      buckets.push(bucket);
+    }
+  }
+
+  return {
+    chartMinPrice,
+    chartMaxPrice,
+    strikePrices: [...lowStrikes, ...highStrikes].sort((a, b) => a - b),
+    buckets: normalizeBucketMasses(
+      buckets
+        .map((bucket) => ({
+          ...bucket,
+          probabilityDensity: clampProbability(bucket.probabilityDensity),
+        }))
+        .filter((bucket) => bucket.probabilityDensity > 0),
+    ),
+  };
+}
+
+function interpolateBucketQuantile(buckets: PriceHitDistributionBucket[], quantile: number) {
+  if (buckets.length === 0) {
+    return null;
+  }
+
+  const target = clampProbability(quantile);
+  let cumulative = 0;
+
+  for (const bucket of buckets) {
+    const nextCumulative = cumulative + bucket.probabilityDensity;
+    if (target <= nextCumulative || bucket === buckets[buckets.length - 1]) {
+      if (bucket.probabilityDensity <= 0) {
+        return bucket.endPrice;
+      }
+
+      const ratio = clampProbability((target - cumulative) / bucket.probabilityDensity);
+      return bucket.startPrice + ratio * (bucket.endPrice - bucket.startPrice);
+    }
+
+    cumulative = nextCumulative;
+  }
+
+  return buckets[buckets.length - 1]!.endPrice;
+}
+
+export function buildPriceHitExpiryDistributions(markets: PriceHitNormalizedMarket[]): PriceHitExpiryDistribution[] {
+  return buildSelectedEvents(markets)
+    .map(({ expiryDate, event }) => {
+      const chart = buildDistributionBuckets(event.markets);
+
+      if (!chart || chart.buckets.length === 0) {
         return null;
       }
 
-      const strikePrices = sortedMarkets.map((market) => market.strikePrice);
-      const repairedSurvival = repairPriceHitSurvivalProbabilities(sortedMarkets.map((market) => market.probability));
-      const { buckets, chartMinPrice, chartMaxPrice } = buildBuckets(strikePrices, repairedSurvival);
-
       return {
         expiryDate,
-        strikeCount: sortedMarkets.length,
-        impliedMedianPrice: interpolateSurvivalQuantile(strikePrices, repairedSurvival, 0.5),
-        range90Low: interpolateSurvivalQuantile(strikePrices, repairedSurvival, 0.05),
-        range90High: interpolateSurvivalQuantile(strikePrices, repairedSurvival, 0.95),
-        chartMinPrice,
-        chartMaxPrice,
-        strikePrices,
-        buckets,
-        markets: sortedMarkets.map((market) => ({
+        eventId: event.eventId,
+        eventTitle: event.eventTitle,
+        strikeCount: event.markets.length,
+        impliedMedianPrice: interpolateBucketQuantile(chart.buckets, 0.5),
+        range90Low: interpolateBucketQuantile(chart.buckets, 0.05),
+        range90High: interpolateBucketQuantile(chart.buckets, 0.95),
+        chartMinPrice: chart.chartMinPrice,
+        chartMaxPrice: chart.chartMaxPrice,
+        strikePrices: chart.strikePrices,
+        buckets: chart.buckets,
+        markets: event.markets.map((market) => ({
           marketId: market.marketId,
           eventId: market.eventId,
           eventTitle: market.eventTitle,
           title: market.title,
+          side: market.side,
           strikePrice: market.strikePrice,
           probability: market.probability,
           volume24hUsd: market.volume24hUsd,

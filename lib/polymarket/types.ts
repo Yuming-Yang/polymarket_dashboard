@@ -7,6 +7,7 @@ export type WatchlistSummaryStatus = "ready" | "unavailable";
 export type PriceHitAssetKey = "bitcoin" | "gold" | "oil" | "nvda" | "silver";
 export type PriceHitAiCacheStatus = "cache_hit" | "refreshed" | "stale_fallback";
 export type PriceHitBucketKind = "lower" | "interior" | "upper";
+export type PriceHitMarketSide = "low" | "high";
 
 export type TopVolumeParams = {
   entity: TopVolumeEntity;
@@ -109,6 +110,7 @@ export type PriceHitMarketItem = {
   eventId: string;
   eventTitle: string;
   title: string;
+  side: PriceHitMarketSide;
   strikePrice: number;
   probability: number;
   volume24hUsd: number | null;
@@ -120,6 +122,8 @@ export type PriceHitMarketItem = {
 export type PriceHitDistributionBucket = {
   key: string;
   kind: PriceHitBucketKind;
+  startPrice: number;
+  endPrice: number;
   centerPrice: number;
   probabilityDensity: number;
   label: string;
@@ -127,6 +131,8 @@ export type PriceHitDistributionBucket = {
 
 export type PriceHitExpiryDistribution = {
   expiryDate: string;
+  eventId: string;
+  eventTitle: string;
   strikeCount: number;
   impliedMedianPrice: number | null;
   range90Low: number | null;

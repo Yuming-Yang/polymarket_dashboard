@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { PriceHitAssetConfig } from "@/lib/price-hit/assets";
 import { fetchPublicSearch } from "@/lib/polymarket/client";
+import { classifyPriceHitMarketSide, extractStrikePrice } from "@/lib/polymarket/price-hit";
 import { gammaPublicSearchResponseSchema, priceHitStructuredEventSchema } from "@/lib/polymarket/schemas";
 import { PriceHitStructuredEvent } from "@/lib/polymarket/types";
 
@@ -203,10 +204,6 @@ function buildSnapshot(asset: PriceHitAssetConfig, rawSearchResponse: SearchResp
   };
 }
 
-function hasPriceLikeStrike(text: string) {
-  return /\$\s*[0-9]/i.test(text) || /\b[0-9]{2,3}(?:,[0-9]{3})*(?:\.\d+)?[kKmMbB]?\b/.test(text);
-}
-
 function normalizeMarketClassifierText(...values: Array<string | null>) {
   return values
     .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
@@ -216,42 +213,22 @@ function normalizeMarketClassifierText(...values: Array<string | null>) {
     .toLowerCase();
 }
 
-function classifyPriceHitMarketSide(text: string) {
-  if (!text || !hasPriceLikeStrike(text)) {
-    return null;
-  }
-
-  if (
-    /\b(above|below|settle|settles|settlement|close above|close below|closing above|closing below|between|range|band|finish above|finish below)\b/i.test(
-      text,
-    )
-  ) {
-    return null;
-  }
-
-  if (/\b(dip to|hit\s*\(?low\)?|fall to|falls to|drop to|drops to|low\))\b/i.test(text)) {
-    return "low";
-  }
-
-  if (/\b(reach|reaches|touch|touches|hit\s*\(?high\)?|high\)|hit)\b/i.test(text)) {
-    return "high";
-  }
-
-  return null;
-}
-
 function textMatchesAsset(asset: PriceHitAssetConfig, text: string) {
   return ASSET_MARKET_ALIASES[asset.key].some((pattern) => pattern.test(text));
 }
 
 function isTwoSidedPriceHitEventCandidate(asset: PriceHitAssetConfig, event: SearchEvent) {
-  const marketTexts = (event.markets ?? []).map((market: SearchMarket) =>
-    normalizeMarketClassifierText(toString(market.question), toString(market.title), toString(market.groupItemTitle)),
-  );
+  const relevantMarkets = (event.markets ?? []).filter((market: SearchMarket) => {
+    const descriptor = normalizeMarketClassifierText(
+      toString(market.question),
+      toString(market.title),
+      toString(market.groupItemTitle),
+    );
 
-  const relevantMarketTexts = marketTexts.filter((text) => textMatchesAsset(asset, text));
-  const highCount = relevantMarketTexts.filter((text) => classifyPriceHitMarketSide(text) === "high").length;
-  const lowCount = relevantMarketTexts.filter((text) => classifyPriceHitMarketSide(text) === "low").length;
+    return textMatchesAsset(asset, descriptor) && extractStrikePrice(market) !== null;
+  });
+  const highCount = relevantMarkets.filter((market) => classifyPriceHitMarketSide(market) === "high").length;
+  const lowCount = relevantMarkets.filter((market) => classifyPriceHitMarketSide(market) === "low").length;
 
   return highCount >= 2 && lowCount >= 2;
 }

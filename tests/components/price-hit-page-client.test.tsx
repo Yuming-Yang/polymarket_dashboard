@@ -71,6 +71,8 @@ const basePriceHitData = {
   expiries: [
     {
       expiryDate: "2026-04-30",
+      eventId: "event-1",
+      eventTitle: "What price will Bitcoin hit in April 2026?",
       strikeCount: 3,
       impliedMedianPrice: 135_000,
       range90Low: 95_000,
@@ -79,10 +81,10 @@ const basePriceHitData = {
       chartMaxPrice: 180_000,
       strikePrices: [100_000, 120_000, 140_000],
       buckets: [
-        { key: "lower", kind: "lower", centerPrice: 90_000, probabilityDensity: 0.2, label: "< $100k" },
-        { key: "mid-1", kind: "interior", centerPrice: 110_000, probabilityDensity: 0.1, label: "$100k - $120k" },
-        { key: "mid-2", kind: "interior", centerPrice: 130_000, probabilityDensity: 0.3, label: "$120k - $140k" },
-        { key: "upper", kind: "upper", centerPrice: 150_000, probabilityDensity: 0.4, label: ">= $140k" },
+        { key: "lower", kind: "lower", startPrice: 80_000, endPrice: 100_000, centerPrice: 90_000, probabilityDensity: 0.2, label: "< $100k" },
+        { key: "mid-1", kind: "interior", startPrice: 100_000, endPrice: 120_000, centerPrice: 110_000, probabilityDensity: 0.1, label: "$100k - $120k" },
+        { key: "mid-2", kind: "interior", startPrice: 120_000, endPrice: 140_000, centerPrice: 130_000, probabilityDensity: 0.3, label: "$120k - $140k" },
+        { key: "upper", kind: "upper", startPrice: 140_000, endPrice: 180_000, centerPrice: 160_000, probabilityDensity: 0.4, label: ">= $140k" },
       ],
       markets: [
         {
@@ -90,6 +92,7 @@ const basePriceHitData = {
           eventId: "event-1",
           eventTitle: "Bitcoin April Targets",
           title: "Will Bitcoin reach $120k?",
+          side: "high" as const,
           strikePrice: 120_000,
           probability: 0.45,
           volume24hUsd: 2500,
@@ -101,6 +104,8 @@ const basePriceHitData = {
     },
     {
       expiryDate: "2026-05-31",
+      eventId: "event-2",
+      eventTitle: "What price will Bitcoin hit in May 2026?",
       strikeCount: 2,
       impliedMedianPrice: 145_000,
       range90Low: 105_000,
@@ -109,8 +114,8 @@ const basePriceHitData = {
       chartMaxPrice: 190_000,
       strikePrices: [120_000, 150_000],
       buckets: [
-        { key: "lower-may", kind: "lower", centerPrice: 105_000, probabilityDensity: 0.3, label: "< $120k" },
-        { key: "upper-may", kind: "upper", centerPrice: 165_000, probabilityDensity: 0.7, label: ">= $150k" },
+        { key: "lower-may", kind: "lower", startPrice: 90_000, endPrice: 120_000, centerPrice: 105_000, probabilityDensity: 0.3, label: "< $120k" },
+        { key: "upper-may", kind: "upper", startPrice: 150_000, endPrice: 190_000, centerPrice: 170_000, probabilityDensity: 0.7, label: ">= $150k" },
       ],
       markets: [],
     },

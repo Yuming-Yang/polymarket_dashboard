@@ -164,6 +164,7 @@ export const priceHitMarketItemSchema = z.object({
   eventId: z.string(),
   eventTitle: z.string(),
   title: z.string(),
+  side: z.enum(["low", "high"]),
   strikePrice: z.number(),
   probability: z.number().min(0).max(1),
   volume24hUsd: z.number().nullable(),
@@ -175,6 +176,8 @@ export const priceHitMarketItemSchema = z.object({
 export const priceHitDistributionBucketSchema = z.object({
   key: z.string(),
   kind: z.enum(["lower", "interior", "upper"]),
+  startPrice: z.number(),
+  endPrice: z.number(),
   centerPrice: z.number(),
   probabilityDensity: z.number().min(0).max(1),
   label: z.string(),
@@ -182,6 +185,8 @@ export const priceHitDistributionBucketSchema = z.object({
 
 export const priceHitExpiryDistributionSchema = z.object({
   expiryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  eventId: z.string(),
+  eventTitle: z.string(),
   strikeCount: z.number().int().min(0),
   impliedMedianPrice: z.number().nullable(),
   range90Low: z.number().nullable(),

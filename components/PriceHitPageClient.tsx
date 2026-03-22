@@ -102,8 +102,6 @@ function DistributionChart({ assetLabel, expiry }: { assetLabel: string; expiry:
   const plotHeight = height - margin.top - margin.bottom;
   const maxDensity = Math.max(...expiry.buckets.map((bucket) => bucket.probabilityDensity), 0.01);
   const xDomain = Math.max(expiry.chartMaxPrice - expiry.chartMinPrice, 1);
-  const slotWidth = plotWidth / Math.max(expiry.buckets.length, 1);
-  const barWidth = Math.min(58, slotWidth * 0.72);
   const tickCount = 5;
   const strikeTickStep = Math.max(1, Math.ceil(expiry.strikePrices.length / 6));
 
@@ -115,6 +113,7 @@ function DistributionChart({ assetLabel, expiry }: { assetLabel: string; expiry:
       <p className="text-lg font-medium tracking-tight text-slate-700">
         Implied probability distribution · {assetLabel} · {formatExpiryHeading(expiry.expiryDate)} expiry
       </p>
+      <p className="mt-1 text-sm text-slate-500">Using event: {expiry.eventTitle}</p>
 
       <svg viewBox={`0 0 ${width} ${height}`} className="mt-4 h-[21rem] w-full" role="img" aria-label={`${assetLabel} distribution chart`}>
         {Array.from({ length: tickCount + 1 }).map((_, index) => {
@@ -152,7 +151,8 @@ function DistributionChart({ assetLabel, expiry }: { assetLabel: string; expiry:
         />
 
         {expiry.buckets.map((bucket, index) => {
-          const x = xScale(bucket.centerPrice) - barWidth / 2;
+          const x = xScale(bucket.startPrice) + 1;
+          const width = Math.max(6, xScale(bucket.endPrice) - xScale(bucket.startPrice) - 2);
           const y = yScale(bucket.probabilityDensity);
           const barHeight = margin.top + plotHeight - y;
 
@@ -164,7 +164,7 @@ function DistributionChart({ assetLabel, expiry }: { assetLabel: string; expiry:
               <rect
                 x={x}
                 y={y}
-                width={barWidth}
+                width={width}
                 height={Math.max(barHeight, 2)}
                 rx={8}
                 fill={bucketFill(bucket, index, expiry.buckets.length)}
@@ -214,7 +214,7 @@ function DistributionChart({ assetLabel, expiry }: { assetLabel: string; expiry:
           fill="#64748b"
           transform={`rotate(-90 16 ${height / 2})`}
         >
-          Probability density
+          Probability mass
         </text>
       </svg>
     </div>
@@ -246,6 +246,9 @@ function UnderlyingMarketCard({ market }: { market: PriceHitExpiryDistribution["
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-slate-900">{market.title}</p>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+              {market.side === "high" ? "High side" : "Low side"}
+            </span>
             <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
               Strike {formatPrice(market.strikePrice, { compact: market.strikePrice >= 10_000 })}
             </span>
