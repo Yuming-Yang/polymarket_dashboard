@@ -21,6 +21,11 @@ type InsiderAlertsKeyParams = {
   marketId: string | null;
 };
 
+type WatchlistKeyParams = {
+  query: string;
+  limit: number;
+};
+
 export const queryKeys = {
   topVolume: (params: TopVolumeKeyParams) =>
     [
@@ -41,4 +46,5 @@ export const queryKeys = {
     ] as const,
   insiderAlerts: (params: InsiderAlertsKeyParams) =>
     ["insider-alerts", params.minScore, params.limit, params.marketId ?? "all"] as const,
+  watchlist: (params: WatchlistKeyParams) => ["watchlist", params.query.trim().toLowerCase(), params.limit] as const,
 };

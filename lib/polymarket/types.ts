@@ -3,6 +3,7 @@ export type TopVolumeWindow = "24h" | "total";
 export type TopVolumeKind = "market" | "event";
 export type BreakingWindow = "1h" | "24h" | "7d";
 export type ItemStatus = "active" | "resolved" | "closed" | "unknown";
+export type WatchlistSummaryStatus = "ready" | "unavailable";
 
 export type TopVolumeParams = {
   entity: TopVolumeEntity;
@@ -59,6 +60,27 @@ export type BreakingResponse = {
   items: BreakingItem[];
 };
 
+export type WatchlistMarketItem = {
+  id: string;
+  title: string;
+  yesPrice: number | null;
+  noPrice: number | null;
+  lastTradePrice: number | null;
+  volume24hUsd: number | null;
+  volumeTotalUsd: number | null;
+  url: string | null;
+  status: ItemStatus;
+  updatedAt: string | null;
+};
+
+export type WatchlistResponse = {
+  query: string;
+  fetchedAt: string;
+  summary: string | null;
+  summaryStatus: WatchlistSummaryStatus;
+  items: WatchlistMarketItem[];
+};
+
 export type GammaTagRaw = {
   id?: string | number | null;
   label?: string | null;
@@ -70,6 +92,7 @@ export type GammaMarketRaw = {
   question?: string | null;
   title?: string | null;
   slug?: string | null;
+  score?: string | number | null;
   active?: boolean | string | number | null;
   closed?: boolean | string | number | null;
   resolved?: boolean | string | number | null;
@@ -81,6 +104,7 @@ export type GammaMarketRaw = {
   oneWeekPriceChange?: string | number | null;
   oneMonthPriceChange?: string | number | null;
   lastTradePrice?: string | number | null;
+  outcomes?: string | Array<string | null> | null;
   outcomePrices?: string | Array<string | number> | null;
   clobTokenIds?: string | Array<string | number> | null;
   tags?: GammaTagRaw[] | null;
@@ -92,11 +116,13 @@ export type GammaEventRaw = {
   id?: string | number | null;
   title?: string | null;
   slug?: string | null;
+  score?: string | number | null;
   active?: boolean | string | number | null;
   closed?: boolean | string | number | null;
   resolved?: boolean | string | number | null;
   volume24hr?: string | number | null;
   volume?: string | number | null;
+  markets?: GammaMarketRaw[] | null;
   tags?: GammaTagRaw[] | null;
   updatedAt?: string | null;
   [key: string]: unknown;

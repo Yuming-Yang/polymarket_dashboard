@@ -32,6 +32,10 @@ function clampWideCandidateLimit(limit: number) {
   return Math.min(1_000, Math.max(100, limit));
 }
 
+function clampSearchLimit(limit: number) {
+  return Math.min(25, Math.max(5, limit));
+}
+
 async function requestGamma(
   path: string,
   params: Record<string, string>,
@@ -133,6 +137,18 @@ export async function fetchMarketsForBreaking(params: { limit: number; noStore?:
       ascending: "false",
       order: "volume24hr",
       limit: String(clampWideCandidateLimit(params.limit)),
+    },
+    { noStore: params.noStore },
+  );
+}
+
+export async function fetchPublicSearch(params: { query: string; limit: number; noStore?: boolean }) {
+  return requestGamma(
+    "/public-search",
+    {
+      q: params.query,
+      limit_per_type: String(clampSearchLimit(params.limit)),
+      optimized: "true",
     },
     { noStore: params.noStore },
   );

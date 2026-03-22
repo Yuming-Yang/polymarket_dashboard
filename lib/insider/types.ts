@@ -15,6 +15,7 @@ export type InsiderTradeSide = "BUY" | "SELL";
 
 export type ClobTrade = {
   tradeId: string;
+  // Kept as marketId for route compatibility; this stores the Polymarket condition id.
   marketId: string;
   marketSlug: string | null;
   marketTitle: string | null;
@@ -28,6 +29,29 @@ export type ClobTrade = {
   timestamp: string;
   timestampMs: number;
   raw: Record<string, unknown>;
+};
+
+export type TradeNormalizationRejectReason =
+  | "invalid_record"
+  | "missing_trade_id"
+  | "missing_market_id"
+  | "missing_wallet"
+  | "missing_side"
+  | "invalid_price"
+  | "invalid_size"
+  | "missing_timestamp"
+  | "below_minimum_size";
+
+export type TradeNormalizationDiagnostics = {
+  rawCount: number;
+  normalizedCount: number;
+  duplicateCount: number;
+  rejectedByReason: Partial<Record<TradeNormalizationRejectReason, number>>;
+};
+
+export type PublicTradeBatch = {
+  trades: ClobTrade[];
+  diagnostics: TradeNormalizationDiagnostics;
 };
 
 export type WalletStats = {
@@ -48,7 +72,15 @@ export type WalletStats = {
 
 export type SuspicionScoreInput = {
   trade: Pick<ClobTrade, "sizeUsdc">;
-  wallet: Pick<WalletStats, "walletAgeHours" | "walletWinRate" | "marketCount" | "totalTrades" | "resolvedTrades" | "consecutiveLarge">;
+  wallet: Pick<
+    WalletStats,
+    | "walletAgeHours"
+    | "walletWinRate"
+    | "marketCount"
+    | "totalTrades"
+    | "resolvedTrades"
+    | "consecutiveLarge"
+  >;
   marketAverageTradeSize: number | null;
   marketVolume24h: number | null;
 };
@@ -109,10 +141,14 @@ export type MarketToken = {
 };
 
 export type MarketDetail = {
+  // Kept as id for compatibility; this stores the Polymarket condition id.
   id: string;
+  conditionId: string;
+  gammaMarketId: string | null;
   slug: string | null;
   title: string | null;
   volume24h: number | null;
+  active: boolean;
   resolved: boolean;
   closed: boolean;
   tokens: MarketToken[];

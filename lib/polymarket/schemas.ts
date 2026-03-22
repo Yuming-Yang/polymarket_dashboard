@@ -16,6 +16,7 @@ export const gammaMarketSchema = z
     question: z.string().nullable().optional(),
     title: z.string().nullable().optional(),
     slug: z.string().nullable().optional(),
+    score: numberLikeSchema,
     active: boolLikeSchema,
     closed: boolLikeSchema,
     resolved: boolLikeSchema,
@@ -27,6 +28,7 @@ export const gammaMarketSchema = z
     oneWeekPriceChange: numberLikeSchema,
     oneMonthPriceChange: numberLikeSchema,
     lastTradePrice: numberLikeSchema,
+    outcomes: z.union([z.string(), z.array(z.string().nullable())]).nullable().optional(),
     outcomePrices: z.union([z.string(), z.array(z.union([z.string(), z.number()]))]).nullable().optional(),
     clobTokenIds: z.union([z.string(), z.array(z.union([z.string(), z.number()]))]).nullable().optional(),
     tags: z.array(gammaTagSchema).nullable().optional(),
@@ -39,11 +41,13 @@ export const gammaEventSchema = z
     id: z.union([z.string(), z.number()]).nullable().optional(),
     title: z.string().nullable().optional(),
     slug: z.string().nullable().optional(),
+    score: numberLikeSchema,
     active: boolLikeSchema,
     closed: boolLikeSchema,
     resolved: boolLikeSchema,
     volume24hr: numberLikeSchema,
     volume: numberLikeSchema,
+    markets: z.array(gammaMarketSchema).nullable().optional(),
     tags: z.array(gammaTagSchema).nullable().optional(),
     updatedAt: z.string().nullable().optional(),
   })
@@ -51,6 +55,11 @@ export const gammaEventSchema = z
 
 export const gammaMarketsSchema = z.array(gammaMarketSchema);
 export const gammaEventsSchema = z.array(gammaEventSchema);
+export const gammaPublicSearchResponseSchema = z
+  .object({
+    events: z.array(gammaEventSchema).optional(),
+  })
+  .passthrough();
 
 export const topVolumeItemSchema = z.object({
   kind: z.enum(["market", "event"]),
@@ -101,4 +110,25 @@ export const breakingResponseSchema = z.object({
   }),
   fetchedAt: z.string(),
   items: z.array(breakingItemSchema),
+});
+
+export const watchlistMarketItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  yesPrice: z.number().nullable(),
+  noPrice: z.number().nullable(),
+  lastTradePrice: z.number().nullable(),
+  volume24hUsd: z.number().nullable(),
+  volumeTotalUsd: z.number().nullable(),
+  url: z.string().nullable(),
+  status: z.enum(["active", "resolved", "closed", "unknown"]),
+  updatedAt: z.string().nullable(),
+});
+
+export const watchlistResponseSchema = z.object({
+  query: z.string(),
+  fetchedAt: z.string(),
+  summary: z.string().nullable(),
+  summaryStatus: z.enum(["ready", "unavailable"]),
+  items: z.array(watchlistMarketItemSchema),
 });

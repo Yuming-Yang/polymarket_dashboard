@@ -5,6 +5,7 @@ Production-ready modular analytics dashboard built with Next.js App Router.
 - Module 1: `/top-volume` (top events/markets by volume)
 - Module 2: `/breaking` (largest absolute price movers over selectable windows)
 - Module 3: `/insider` (suspicious trade detection with cron + Supabase)
+- Module 4: `/watchlist` (search-driven topic watchlist with AI narrative summary)
 
 ## Tech Stack
 
@@ -64,6 +65,10 @@ pnpm dev
 
 `CRON_SECRET=...`
 
+`OPENAI_API_KEY=...`
+
+`OPENAI_WATCHLIST_MODEL=gpt-5-mini` (optional)
+
 ## Module 1 API Contract
 
 `GET /api/polymarket/top-volume`
@@ -114,6 +119,24 @@ Returns wallet-level aggregate stats plus all saved alerts for that wallet.
 - requires `Authorization: Bearer <CRON_SECRET>`
 - fetches recent trades, updates wallet history, settles resolved trades, and stores alerts in Supabase
 
+## Module 4 API Contract
+
+`GET /api/polymarket/watchlist`
+
+Query params:
+
+- `q=<keyword>` (required)
+- `limit=12`
+- `refresh=1` (optional cache bypass)
+
+The route returns a normalized payload with:
+
+- `query`
+- `fetchedAt`
+- `summary`
+- `summaryStatus=ready|unavailable`
+- `items[]` containing title, Yes/No pricing, last trade price, status, volume, and Polymarket URL
+
 ## Notebook Parity Map
 
 Source notebook: `polymarket_top_events.ipynb`
@@ -150,11 +173,13 @@ app/
     top-volume/page.tsx
     breaking/page.tsx
     insider/page.tsx
+    watchlist/page.tsx
   api/cron/insider-scan/route.ts
   api/insider/alerts/route.ts
   api/insider/wallet/[address]/route.ts
   api/polymarket/top-volume/route.ts
   api/polymarket/breaking/route.ts
+  api/polymarket/watchlist/route.ts
   layout.tsx
   page.tsx
 
@@ -168,6 +193,7 @@ components/
   BreakingTable.tsx
   BreakingCards.tsx
   InsiderPageClient.tsx
+  WatchlistPageClient.tsx
   InsiderAlertCard.tsx
   ErrorState.tsx
   Skeletons.tsx
@@ -188,13 +214,17 @@ lib/
     schemas.ts
     types.ts
     normalize.ts
+    watchlist.ts
     filter.ts
     volume.ts
+  watchlist/
+    summary.ts
   query/
     keys.ts
     useTopVolume.ts
     useBreaking.ts
     useInsiderAlerts.ts
+    useWatchlist.ts
 
 tests/
   api/
