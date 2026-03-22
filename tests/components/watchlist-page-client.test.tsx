@@ -63,7 +63,7 @@ describe("WatchlistPageClient", () => {
     expect(screen.queryByText("No events found")).not.toBeInTheDocument();
   });
 
-  it("submits a typed query and renders the summary above results", () => {
+  it("submits a typed query, keeps markets collapsed by default, and expands on demand", () => {
     vi.mocked(useWatchlist).mockImplementation(({ query }) =>
       asQueryResult(
         baseResult(
@@ -117,6 +117,10 @@ describe("WatchlistPageClient", () => {
     expect(calls[calls.length - 1]?.[0]).toEqual({ query: "Iran", limit: 12 });
     expect(screen.getByText("AI Summary")).toBeInTheDocument();
     expect(screen.getByText("Iran Diplomatic Outlook")).toBeInTheDocument();
+    expect(screen.queryByText("Will Iran talks restart in 2026?")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Show 1 market" }));
+
     expect(screen.getByText("Will Iran talks restart in 2026?")).toBeInTheDocument();
   });
 
@@ -192,7 +196,7 @@ describe("WatchlistPageClient", () => {
 
     expect(screen.getByText("AI summary unavailable right now")).toBeInTheDocument();
     expect(screen.getByText("Fed Rate Decision")).toBeInTheDocument();
-    expect(screen.getByText("Will the Fed cut rates by June?")).toBeInTheDocument();
+    expect(screen.queryByText("Will the Fed cut rates by June?")).not.toBeInTheDocument();
   });
 
   it("shows an empty state after a search with no results", () => {

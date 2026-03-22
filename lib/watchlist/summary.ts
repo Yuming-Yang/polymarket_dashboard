@@ -16,7 +16,7 @@ const WATCHLIST_SYSTEM_PROMPT = `
 
 <writing_controls>
 - 仅使用简体中文。
-- 输出 2 到 4 句。
+- 目标是 3 到 5 句；如果信息密度确实需要，可以写到 6 句，但保持紧凑。
 - 只输出正文，不要标题、项目符号、Markdown、引号、前言或结尾客套话。
 - 语气冷静、专业、分析型，像交易台晨会摘要，不要夸张。
 - 第一语句先给最高信号结论，后面再补充分歧、条件或不确定性。
@@ -136,9 +136,9 @@ export async function generateWatchlistSummary(params: {
       },
       body: JSON.stringify({
         model: process.env.OPENAI_WATCHLIST_MODEL?.trim() || DEFAULT_MODEL,
-        max_output_tokens: 180,
+        max_output_tokens: 320,
         text: {
-          verbosity: "low",
+          verbosity: "medium",
         },
         input: [
           {

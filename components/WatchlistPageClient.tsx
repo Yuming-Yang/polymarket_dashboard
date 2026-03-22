@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { AlertTriangle, ExternalLink, RefreshCw, Search, Sparkles } from "lucide-react";
+import { AlertTriangle, ChevronDown, ExternalLink, RefreshCw, Search, Sparkles } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import { PageHeader } from "@/components/PageHeader";
@@ -165,6 +165,9 @@ function WatchlistMarketRow({ item }: { item: WatchlistMarketItem }) {
 }
 
 function WatchlistEventCard({ event, index }: { event: WatchlistEventItem; index: number }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const marketLabel = event.marketCount === 1 ? "market" : "markets";
+
   return (
     <Card>
       <CardContent className="space-y-4 p-5">
@@ -197,11 +200,23 @@ function WatchlistEventCard({ event, index }: { event: WatchlistEventItem; index
           ) : null}
         </div>
 
-        <div className="grid gap-3">
-          {event.markets.map((market) => (
-            <WatchlistMarketRow key={market.id} item={market} />
-          ))}
-        </div>
+        <button
+          type="button"
+          onClick={() => setIsExpanded((current) => !current)}
+          className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-medium text-slate-800 transition hover:border-slate-900 hover:bg-slate-100"
+          aria-expanded={isExpanded}
+        >
+          <span>{isExpanded ? `Hide ${event.marketCount} ${marketLabel}` : `Show ${event.marketCount} ${marketLabel}`}</span>
+          <ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-180")} />
+        </button>
+
+        {isExpanded ? (
+          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} className="grid gap-3">
+            {event.markets.map((market) => (
+              <WatchlistMarketRow key={market.id} item={market} />
+            ))}
+          </motion.div>
+        ) : null}
       </CardContent>
     </Card>
   );
