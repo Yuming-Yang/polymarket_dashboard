@@ -15,6 +15,12 @@ type BreakingKeyParams = {
   excludeTags: string[];
 };
 
+type InsiderAlertsKeyParams = {
+  minScore: number;
+  limit: number;
+  marketId: string | null;
+};
+
 export const queryKeys = {
   topVolume: (params: TopVolumeKeyParams) =>
     [
@@ -33,4 +39,6 @@ export const queryKeys = {
       params.includeTags.join(","),
       params.excludeTags.join(","),
     ] as const,
+  insiderAlerts: (params: InsiderAlertsKeyParams) =>
+    ["insider-alerts", params.minScore, params.limit, params.marketId ?? "all"] as const,
 };

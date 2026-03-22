@@ -4,6 +4,7 @@ Production-ready modular analytics dashboard built with Next.js App Router.
 
 - Module 1: `/top-volume` (top events/markets by volume)
 - Module 2: `/breaking` (largest absolute price movers over selectable windows)
+- Module 3: `/insider` (suspicious trade detection with cron + Supabase)
 
 ## Tech Stack
 
@@ -53,7 +54,15 @@ pnpm dev
 
 `POLYMARKET_GAMMA_BASE_URL=https://gamma-api.polymarket.com`
 
-`POLYMARKET_CLOB_BASE_URL=https://clob.polymarket.com`
+`POLYMARKET_DATA_API_BASE_URL=https://data-api.polymarket.com`
+
+`POLYMARKET_WALLET_DENYLIST=0xabc...,0xdef...` (optional)
+
+`NEXT_PUBLIC_SUPABASE_URL=...`
+
+`SUPABASE_SERVICE_KEY=...`
+
+`CRON_SECRET=...`
 
 ## Module 1 API Contract
 
@@ -84,6 +93,27 @@ Query params:
 
 The route returns a normalized payload (`BreakingResponse`) with `BreakingItem[]`.
 
+## Module 3 API Contract
+
+`GET /api/insider/alerts`
+
+Query params:
+
+- `minScore=6`
+- `limit=50`
+- `marketId=<optional>`
+
+The route returns a normalized payload with `lastScannedAt`, summary counts, and insider alert items.
+
+`GET /api/insider/wallet/[address]`
+
+Returns wallet-level aggregate stats plus all saved alerts for that wallet.
+
+`GET /api/cron/insider-scan`
+
+- requires `Authorization: Bearer <CRON_SECRET>`
+- fetches recent trades, updates wallet history, settles resolved trades, and stores alerts in Supabase
+
 ## Notebook Parity Map
 
 Source notebook: `polymarket_top_events.ipynb`
@@ -103,11 +133,12 @@ Source notebook: `polymarket_top_events.ipynb`
 
 ## Vercel Deployment
 
-This project deploys directly to Vercel without extra backend services.
+This project deploys to Vercel and uses Supabase for insider alert persistence.
 
 - Build command: `pnpm build`
 - Output: Next.js default
 - Runtime API calls are proxied through Next.js route handlers (`/app/api/*`)
+- Insider scanning is triggered by a Vercel Cron Job calling `/api/cron/insider-scan`
 
 ## Project Structure
 
@@ -118,6 +149,10 @@ app/
     providers.tsx
     top-volume/page.tsx
     breaking/page.tsx
+    insider/page.tsx
+  api/cron/insider-scan/route.ts
+  api/insider/alerts/route.ts
+  api/insider/wallet/[address]/route.ts
   api/polymarket/top-volume/route.ts
   api/polymarket/breaking/route.ts
   layout.tsx
@@ -132,12 +167,21 @@ components/
   BreakingControls.tsx
   BreakingTable.tsx
   BreakingCards.tsx
+  InsiderPageClient.tsx
+  InsiderAlertCard.tsx
   ErrorState.tsx
   Skeletons.tsx
   ui/*
 
 lib/
   format.ts
+  insider/
+    clob.ts
+    denylist.ts
+    schemas.ts
+    scorer.ts
+    supabase.ts
+    types.ts
   polymarket/
     breaking.ts
     client.ts
@@ -149,10 +193,13 @@ lib/
   query/
     keys.ts
     useTopVolume.ts
+    useBreaking.ts
+    useInsiderAlerts.ts
 
 tests/
   api/
   components/
+  insider/
   polymarket/
 ```
 
