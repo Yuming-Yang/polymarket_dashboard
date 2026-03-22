@@ -183,6 +183,11 @@ export async function refreshAllPriceHitAssets(): Promise<PriceHitRefreshRespons
       const result = await refreshPriceHitAssetCache(asset, true);
       return buildRefreshResult(asset, result, null);
     } catch (error) {
+      console.error("[price-hit/service] forced refresh failed", {
+        asset: asset.key,
+        error: toErrorMessage(error),
+      });
+
       const cached = await getPriceHitCache(asset.key);
       return buildRefreshResult(
         asset,

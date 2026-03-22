@@ -350,19 +350,31 @@ function PriceHitEmptyState({
 function summarizeRefreshResponse(payload: PriceHitRefreshResponse): RefreshBannerState {
   const refreshedCount = payload.results.filter((result) => result.status === "refreshed").length;
   const fallbackCount = payload.results.filter((result) => result.status === "stale_fallback").length;
-  const failedCount = payload.results.filter((result) => result.status === "failed").length;
+  const failedResults = payload.results.filter((result) => result.status === "failed");
+  const failedCount = failedResults.length;
 
   if (failedCount > 0) {
+    const details = failedResults
+      .slice(0, 3)
+      .map((result) => `${result.assetLabel}: ${result.message ?? "Unknown error"}`)
+      .join(" ");
+
     return {
       tone: "error",
-      message: `AI refresh finished with ${failedCount} failed asset${failedCount === 1 ? "" : "s"}.`,
+      message: `AI refresh finished with ${failedCount} failed asset${failedCount === 1 ? "" : "s"}. ${details}`,
     };
   }
 
   if (fallbackCount > 0) {
+    const fallbackDetails = payload.results
+      .filter((result) => result.status === "stale_fallback")
+      .slice(0, 3)
+      .map((result) => `${result.assetLabel}: ${result.message ?? "Using previous cache."}`)
+      .join(" ");
+
     return {
       tone: "neutral",
-      message: `${refreshedCount} asset${refreshedCount === 1 ? "" : "s"} refreshed. ${fallbackCount} kept the previous cached AI result.`,
+      message: `${refreshedCount} asset${refreshedCount === 1 ? "" : "s"} refreshed. ${fallbackCount} kept the previous cached AI result. ${fallbackDetails}`,
     };
   }
 
