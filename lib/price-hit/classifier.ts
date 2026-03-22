@@ -11,6 +11,13 @@ const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5.4-mini";
 const REQUEST_TIMEOUT_MS = 18_000;
 const SEARCH_LIMIT = 25;
+const ASSET_MARKET_ALIASES: Record<PriceHitAssetConfig["key"], RegExp[]> = {
+  bitcoin: [/\bbitcoin\b/i, /\bbtc\b/i],
+  gold: [/\bgold\b/i, /\bgc\b/i],
+  oil: [/\bcrude oil\b/i, /\boil\b/i, /\bcl\b/i],
+  nvda: [/\bnvda\b/i, /\bnvidia\b/i],
+  silver: [/\bsilver\b/i, /\bsi\b/i],
+};
 
 const CLASSIFIER_SYSTEM_PROMPT = `
 <role>
@@ -18,12 +25,19 @@ You are classifying Polymarket events for a price-hit distribution dashboard.
 </role>
 
 <task>
-From the provided Polymarket search results for one asset, keep only events that are genuine strike-based price-hit / price-target markets for that same asset.
+From the provided Polymarket search results for one asset, keep only parent events that are two-sided price-target ladders for that same asset and expiry.
 </task>
 
 <include>
-- Events whose child markets are questions like "Will BTC reach $120k?", "Will Gold hit $3,000?", or "Will NVDA touch $150 by March?"
+- Keep only events whose child markets clearly contain BOTH:
+  1. an upside ladder, such as "reach", "touch", or "hit (HIGH)"
+  2. a downside ladder, such as "dip to" or "hit (LOW)"
+- The wording can vary, but the event must be the same two-sided "what price will X hit by expiry" structure.
 - The same expiry can have many strike markets; keep the parent event once.
+- Examples to keep:
+  - "Will Bitcoin reach $110,000 in March?" together with "Will Bitcoin dip to $65,000 in March?"
+  - "Will Gold (GC) hit (HIGH) $4300 by end of March?" together with "Will Gold (GC) hit (LOW) $3000 by end of March?"
+  - "Will Crude Oil (CL) hit (HIGH) $180 by end of March?" together with "Will Crude Oil (CL) hit (LOW) $90 by end of March?"
 </include>
 
 <exclude>
@@ -31,6 +45,9 @@ From the provided Polymarket search results for one asset, keep only events that
 - Markets for a different asset.
 - Generic directional markets with no strike target.
 - Events where the expiry date cannot be determined confidently from the provided data.
+- Any event that is only one-sided, such as only "reach" markets or only "dip" markets.
+- Events built from "above", "below", "settle at", "close above", "close below", "range", "between", or similar settlement/range wording.
+- For Bitcoin specifically, reject the extra event families that are not this two-sided ladder structure, even if they contain strike prices.
 </exclude>
 
 <output_rules>
@@ -47,6 +64,8 @@ const structuredEventsEnvelopeSchema = z.object({
 });
 
 type SearchResponse = z.infer<typeof gammaPublicSearchResponseSchema>;
+type SearchEvent = NonNullable<SearchResponse["events"]>[number];
+type SearchMarket = NonNullable<SearchEvent["markets"]>[number];
 
 function toNumber(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -184,6 +203,59 @@ function buildSnapshot(asset: PriceHitAssetConfig, rawSearchResponse: SearchResp
   };
 }
 
+function hasPriceLikeStrike(text: string) {
+  return /\$\s*[0-9]/i.test(text) || /\b[0-9]{2,3}(?:,[0-9]{3})*(?:\.\d+)?[kKmMbB]?\b/.test(text);
+}
+
+function normalizeMarketClassifierText(...values: Array<string | null>) {
+  return values
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function classifyPriceHitMarketSide(text: string) {
+  if (!text || !hasPriceLikeStrike(text)) {
+    return null;
+  }
+
+  if (
+    /\b(above|below|settle|settles|settlement|close above|close below|closing above|closing below|between|range|band|finish above|finish below)\b/i.test(
+      text,
+    )
+  ) {
+    return null;
+  }
+
+  if (/\b(dip to|hit\s*\(?low\)?|fall to|falls to|drop to|drops to|low\))\b/i.test(text)) {
+    return "low";
+  }
+
+  if (/\b(reach|reaches|touch|touches|hit\s*\(?high\)?|high\)|hit)\b/i.test(text)) {
+    return "high";
+  }
+
+  return null;
+}
+
+function textMatchesAsset(asset: PriceHitAssetConfig, text: string) {
+  return ASSET_MARKET_ALIASES[asset.key].some((pattern) => pattern.test(text));
+}
+
+function isTwoSidedPriceHitEventCandidate(asset: PriceHitAssetConfig, event: SearchEvent) {
+  const marketTexts = (event.markets ?? []).map((market: SearchMarket) =>
+    normalizeMarketClassifierText(toString(market.question), toString(market.title), toString(market.groupItemTitle)),
+  );
+
+  const relevantMarketTexts = marketTexts.filter((text) => textMatchesAsset(asset, text));
+  const highCount = relevantMarketTexts.filter((text) => classifyPriceHitMarketSide(text) === "high").length;
+  const lowCount = relevantMarketTexts.filter((text) => classifyPriceHitMarketSide(text) === "low").length;
+
+  return highCount >= 2 && lowCount >= 2;
+}
+
 function dedupeStructuredEvents(events: PriceHitStructuredEvent[]) {
   const bestByKey = new Map<string, PriceHitStructuredEvent>();
 
@@ -212,6 +284,12 @@ export async function classifyPriceHitEvents(asset: PriceHitAssetConfig) {
 
   const searchResponse = gammaPublicSearchResponseSchema.parse(rawSearchResponse);
   const snapshot = buildSnapshot(asset, searchResponse);
+  const candidateEventIds = new Set(
+    (searchResponse.events ?? [])
+      .filter((event) => isTwoSidedPriceHitEventCandidate(asset, event))
+      .map((event) => toString(event.id))
+      .filter((eventId): eventId is string => Boolean(eventId)),
+  );
 
   if (snapshot.events.length === 0) {
     return [];
@@ -304,7 +382,7 @@ export async function classifyPriceHitEvents(asset: PriceHitAssetConfig) {
     }
 
     const parsed = structuredEventsEnvelopeSchema.parse(JSON.parse(text));
-    return dedupeStructuredEvents(parsed.events);
+    return dedupeStructuredEvents(parsed.events).filter((event) => candidateEventIds.has(event.eventId));
   } finally {
     clearTimeout(timeout);
   }
