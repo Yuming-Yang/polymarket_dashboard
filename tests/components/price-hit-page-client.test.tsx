@@ -165,11 +165,11 @@ describe("PriceHitPageClient", () => {
       }),
     );
 
-    let resolveFetch: ((value: Response) => void) | null = null;
+    let resolveFetch!: (value: Response) => void;
     fetchMock.mockReturnValue(
-      new Promise((resolve) => {
+      new Promise<Response>((resolve) => {
         resolveFetch = resolve;
-      }) as Promise<Response>,
+      }),
     );
 
     renderWithClient();
@@ -177,7 +177,7 @@ describe("PriceHitPageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "AI Refresh" }));
     expect(screen.getByText("Refreshing...")).toBeInTheDocument();
 
-    resolveFetch?.(
+    resolveFetch(
       new Response(
         JSON.stringify({
           fetchedAt: "2026-03-22T00:00:00.000Z",

@@ -44,22 +44,24 @@ describe("price hit classifier", () => {
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
-          output_text: JSON.stringify([
-            {
-              asset: "bitcoin",
-              eventId: "event-1",
-              eventSlug: "bitcoin-march-targets",
-              eventTitle: "Bitcoin March Targets",
-              expiryDate: "2026-03-31",
-            },
-            {
-              asset: "bitcoin",
-              eventId: "event-1",
-              eventSlug: "bitcoin-march-targets",
-              eventTitle: "Bitcoin March Targets",
-              expiryDate: "2026-03-31",
-            },
-          ]),
+          output_text: JSON.stringify({
+            events: [
+              {
+                asset: "bitcoin",
+                eventId: "event-1",
+                eventSlug: "bitcoin-march-targets",
+                eventTitle: "Bitcoin March Targets",
+                expiryDate: "2026-03-31",
+              },
+              {
+                asset: "bitcoin",
+                eventId: "event-1",
+                eventSlug: "bitcoin-march-targets",
+                eventTitle: "Bitcoin March Targets",
+                expiryDate: "2026-03-31",
+              },
+            ],
+          }),
         }),
         { status: 200 },
       ),
@@ -94,18 +96,49 @@ describe("price hit classifier", () => {
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
-          output_text: JSON.stringify([
-            {
-              asset: "bitcoin",
-              eventId: 123,
-            },
-          ]),
+          output_text: JSON.stringify({
+            events: [
+              {
+                asset: "bitcoin",
+                eventId: 123,
+              },
+            ],
+          }),
         }),
         { status: 200 },
       ),
     );
 
     await expect(classifyPriceHitEvents(getPriceHitAssetConfig("bitcoin"))).rejects.toThrow();
+  });
+
+  it("includes the OpenAI error body when the structured-output request is rejected", async () => {
+    vi.mocked(fetchPublicSearch).mockResolvedValue({
+      events: [
+        {
+          id: "event-1",
+          slug: "bitcoin-march-targets",
+          title: "Bitcoin March Targets",
+          endDate: "2026-03-31",
+          markets: [],
+        },
+      ],
+    });
+
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            message: "Schema validation error: root schema must be an object",
+          },
+        }),
+        { status: 400 },
+      ),
+    );
+
+    await expect(classifyPriceHitEvents(getPriceHitAssetConfig("bitcoin"))).rejects.toThrow(
+      "Schema validation error: root schema must be an object",
+    );
   });
 
   it("returns an empty list without calling OpenAI when the search has no events", async () => {

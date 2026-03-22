@@ -42,7 +42,9 @@ From the provided Polymarket search results for one asset, keep only events that
 </output_rules>
 `.trim();
 
-const structuredEventsSchema = z.array(priceHitStructuredEventSchema);
+const structuredEventsEnvelopeSchema = z.object({
+  events: z.array(priceHitStructuredEventSchema),
+});
 
 type SearchResponse = z.infer<typeof gammaPublicSearchResponseSchema>;
 
@@ -127,6 +129,31 @@ function extractResponseText(value: unknown): string | null {
   return textParts.length > 0 ? textParts.join("\n").trim() : null;
 }
 
+async function buildOpenAiErrorMessage(response: Response, model: string) {
+  const prefix = `OpenAI classification request failed with status ${response.status} for model ${model}`;
+  const body = (await response.text()).trim();
+
+  if (!body) {
+    return prefix;
+  }
+
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: {
+        message?: unknown;
+      };
+    };
+    const message = parsed?.error?.message;
+    if (typeof message === "string" && message.trim() !== "") {
+      return `${prefix}: ${message.trim()}`;
+    }
+  } catch {
+    // Fall back to the raw text when the error response is not JSON.
+  }
+
+  return `${prefix}: ${body.slice(0, 400)}`;
+}
+
 function buildSnapshot(asset: PriceHitAssetConfig, rawSearchResponse: SearchResponse) {
   return {
     asset: {
@@ -199,6 +226,7 @@ export async function classifyPriceHitEvents(asset: PriceHitAssetConfig) {
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
+    const model = process.env.OPENAI_PRICE_HIT_MODEL?.trim() || DEFAULT_MODEL;
     const response = await fetch(OPENAI_RESPONSES_URL, {
       method: "POST",
       cache: "no-store",
@@ -208,7 +236,7 @@ export async function classifyPriceHitEvents(asset: PriceHitAssetConfig) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_PRICE_HIT_MODEL?.trim() || DEFAULT_MODEL,
+        model,
         max_output_tokens: 1_000,
         text: {
           format: {
@@ -216,31 +244,38 @@ export async function classifyPriceHitEvents(asset: PriceHitAssetConfig) {
             name: "price_hit_structured_events",
             strict: true,
             schema: {
-              type: "array",
-              items: {
-                type: "object",
-                additionalProperties: false,
-                properties: {
-                  asset: {
-                    type: "string",
-                    enum: [asset.key],
-                  },
-                  eventId: {
-                    type: "string",
-                  },
-                  eventSlug: {
-                    type: ["string", "null"],
-                  },
-                  eventTitle: {
-                    type: "string",
-                  },
-                  expiryDate: {
-                    type: "string",
-                    pattern: "^\\d{4}-\\d{2}-\\d{2}$",
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                events: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    additionalProperties: false,
+                    properties: {
+                      asset: {
+                        type: "string",
+                        enum: [asset.key],
+                      },
+                      eventId: {
+                        type: "string",
+                      },
+                      eventSlug: {
+                        type: ["string", "null"],
+                      },
+                      eventTitle: {
+                        type: "string",
+                      },
+                      expiryDate: {
+                        type: "string",
+                        format: "date",
+                      },
+                    },
+                    required: ["asset", "eventId", "eventSlug", "eventTitle", "expiryDate"],
                   },
                 },
-                required: ["asset", "eventId", "eventSlug", "eventTitle", "expiryDate"],
               },
+              required: ["events"],
             },
           },
         },
@@ -258,7 +293,7 @@ export async function classifyPriceHitEvents(asset: PriceHitAssetConfig) {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI classification request failed with status ${response.status}`);
+      throw new Error(await buildOpenAiErrorMessage(response, model));
     }
 
     const json = await response.json();
@@ -268,8 +303,8 @@ export async function classifyPriceHitEvents(asset: PriceHitAssetConfig) {
       throw new Error("OpenAI classification response did not contain text output");
     }
 
-    const parsed = structuredEventsSchema.parse(JSON.parse(text));
-    return dedupeStructuredEvents(parsed);
+    const parsed = structuredEventsEnvelopeSchema.parse(JSON.parse(text));
+    return dedupeStructuredEvents(parsed.events);
   } finally {
     clearTimeout(timeout);
   }
