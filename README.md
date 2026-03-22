@@ -2,10 +2,10 @@
 
 Production-ready modular analytics dashboard built with Next.js App Router.
 
-- Module 1: `/top-volume` (top events/markets by volume)
+- Module 1: `/trending` (top events/markets by volume)
 - Module 2: `/breaking` (largest absolute price movers over selectable windows)
 - Module 3: `/insider` (suspicious trade detection with cron + Supabase)
-- Module 4: `/watchlist` (search-driven topic watchlist with AI narrative summary)
+- Module 4: `/search` (search-driven topic watchlist with AI narrative summary)
 
 ## Tech Stack
 
@@ -39,7 +39,7 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-4. Open [http://localhost:3000/top-volume](http://localhost:3000/top-volume).
+4. Open [http://localhost:3000/trending](http://localhost:3000/trending).
 
 ## Scripts
 
@@ -67,7 +67,7 @@ pnpm dev
 
 `OPENAI_API_KEY=...`
 
-`OPENAI_WATCHLIST_MODEL=gpt-5-mini` (optional)
+`OPENAI_WATCHLIST_MODEL=gpt-5.4-mini` (optional)
 
 ## Module 1 API Contract
 

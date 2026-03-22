@@ -1,5 +1,5 @@
-import { WatchlistPageClient } from "@/components/WatchlistPageClient";
+import { redirect } from "next/navigation";
 
-export default function WatchlistPage() {
-  return <WatchlistPageClient />;
+export default function WatchlistRedirectPage() {
+  redirect("/search");
 }

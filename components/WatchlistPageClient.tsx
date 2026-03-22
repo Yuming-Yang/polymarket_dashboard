@@ -16,7 +16,7 @@ import { useWatchlist } from "@/lib/query/useWatchlist";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_LIMIT = 12;
-const SAVED_KEYWORDS = ["Iran", "AI", "Fed", "Largest Company"] as const;
+const SAVED_KEYWORDS = ["Fed", "AI", "Trump", "Iran", "Bitcoin", "Crypto", "Largest Company"] as const;
 
 function WatchlistErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
@@ -85,7 +85,7 @@ function WatchlistEmptyResults({ query }: { query: string }) {
         <h2 className="text-base font-semibold text-slate-900">No events found</h2>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
           No active Polymarket events matched <span className="font-medium text-slate-900">&quot;{query}&quot;</span>. Try a broader topic or
-          one of the saved searches above.
+          one of the quick buttons above.
         </p>
       </CardContent>
     </Card>
@@ -268,7 +268,7 @@ export function WatchlistPageClient() {
     <div className="space-y-6">
       <PageHeader
         eyebrow="Module 4"
-        title="Watchlist"
+        title="Search"
         subtitle="Search a topic, pull the most relevant live Polymarket markets, and read the market narrative in one place."
       />
 
@@ -280,9 +280,9 @@ export function WatchlistPageClient() {
               <Input
                 value={draftQuery}
                 onChange={(event) => setDraftQuery(event.target.value)}
-                placeholder="Search Iran, AI, Fed, Largest Company..."
+                placeholder="Search key words"
                 className="h-14 rounded-2xl border-slate-200 pl-12 pr-4 text-base"
-                aria-label="Watchlist search"
+                aria-label="Search topics"
               />
             </div>
             <Button type="submit" size="lg" className="h-14 rounded-2xl px-6" disabled={draftQuery.trim().length === 0 || (query.isLoading && !query.data)}>
@@ -291,7 +291,6 @@ export function WatchlistPageClient() {
           </form>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <p className="mr-1 text-xs uppercase tracking-[0.22em] text-slate-500">Saved searches</p>
             {SAVED_KEYWORDS.map((keyword) => (
               <button
                 key={keyword}

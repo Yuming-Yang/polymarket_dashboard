@@ -8,7 +8,7 @@ export default function HomePage() {
         <h1 className="mt-4 text-4xl font-semibold tracking-tight text-foreground">Polymarket Dashboard</h1>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            href="/top-volume"
+            href="/trending"
             className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-900"
           >
             Trending
@@ -18,6 +18,18 @@ export default function HomePage() {
             className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-900"
           >
             Breaking
+          </Link>
+          <Link
+            href="/search"
+            className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-900"
+          >
+            Search
+          </Link>
+          <Link
+            href="/insider"
+            className="inline-flex items-center rounded-full border border-slate-300 bg-white px-5 py-2.5 text-sm font-medium text-slate-900 transition hover:border-slate-900"
+          >
+            Insider
           </Link>
         </div>
       </div>

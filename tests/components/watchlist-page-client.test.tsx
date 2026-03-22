@@ -52,8 +52,14 @@ describe("WatchlistPageClient", () => {
 
     render(<WatchlistPageClient />);
 
-    expect(screen.getByText("Saved searches")).toBeInTheDocument();
+    expect(screen.queryByText("Saved searches")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Fed" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "AI" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Trump" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Iran" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Bitcoin" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Crypto" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Largest Company" })).toBeInTheDocument();
     expect(screen.queryByText("No events found")).not.toBeInTheDocument();
   });
 
@@ -104,7 +110,7 @@ describe("WatchlistPageClient", () => {
 
     render(<WatchlistPageClient />);
 
-    fireEvent.change(screen.getByLabelText("Watchlist search"), { target: { value: "Iran" } });
+    fireEvent.change(screen.getByLabelText("Search topics"), { target: { value: "Iran" } });
     fireEvent.submit(screen.getByRole("search"));
 
     const calls = vi.mocked(useWatchlist).mock.calls;

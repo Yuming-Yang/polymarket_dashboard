@@ -13,7 +13,7 @@ export function Nav() {
           <Separator orientation="vertical" className="h-5" />
           <nav className="flex items-center gap-2 text-sm">
             <Link
-              href="/top-volume"
+              href="/trending"
               className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-800 transition hover:border-slate-900"
             >
               Trending
@@ -25,16 +25,16 @@ export function Nav() {
               Breaking
             </Link>
             <Link
+              href="/search"
+              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-800 transition hover:border-slate-900"
+            >
+              Search
+            </Link>
+            <Link
               href="/insider"
               className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-800 transition hover:border-slate-900"
             >
               Insider
-            </Link>
-            <Link
-              href="/watchlist"
-              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-800 transition hover:border-slate-900"
-            >
-              Watchlist
             </Link>
           </nav>
         </div>

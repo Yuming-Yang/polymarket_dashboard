@@ -1,21 +1,32 @@
-import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
-import { TopVolumePageClient } from "@/components/TopVolumePageClient";
-import { TopVolumeCardsSkeleton, TopVolumeTableSkeleton } from "@/components/Skeletons";
+type SearchParamsValue = string | string[] | undefined;
 
-function TopVolumePageFallback() {
-  return (
-    <div className="space-y-4">
-      <TopVolumeTableSkeleton />
-      <TopVolumeCardsSkeleton />
-    </div>
-  );
+function buildRedirectUrl(pathname: string, searchParams: Record<string, SearchParamsValue>) {
+  const params = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (Array.isArray(value)) {
+      for (const entry of value) {
+        params.append(key, entry);
+      }
+      continue;
+    }
+
+    if (typeof value === "string") {
+      params.set(key, value);
+    }
+  }
+
+  const query = params.toString();
+
+  return query ? `${pathname}?${query}` : pathname;
 }
 
-export default function TopVolumePage() {
-  return (
-    <Suspense fallback={<TopVolumePageFallback />}>
-      <TopVolumePageClient />
-    </Suspense>
-  );
+export default async function TopVolumeRedirectPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, SearchParamsValue>>;
+}) {
+  redirect(buildRedirectUrl("/trending", await searchParams));
 }
